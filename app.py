@@ -100,7 +100,7 @@ def login():
             user.id = email
             flask_login.login_user(user)  # okay login in user
             # protected is a function defined in this file
-            return flask.redirect("http://127.0.0.1:3000/profile")
+            return flask.redirect("http://127.0.0.1:3000/")
 
     # information did not match
     return "Incorrect login information, please try again or create an account."
@@ -109,44 +109,45 @@ def login():
 @app.route('/logout')
 def logout():
     flask_login.logout_user()
-    return render_template('hello.html', message='Logged out')
+    return redirect("http://127.0.0.1:3000/login")
 
 
 @login_manager.unauthorized_handler
 def unauthorized_handler():
     return render_template('unauth.html')
 
-# you can specify specific methods (GET/POST) in function header instead of inside the functions as seen earlier
-
-
-@app.route("/register", methods=['GET'])
-def register():
-    return render_template('register.html', supress='True')
-
 
 @app.route("/register", methods=['POST'])
-def register_user():
+def register():
+    # required information
     try:
         email = request.form.get('email')
         password = request.form.get('password')
+        first_name = request.form.get('first')
+        last_name = request.form.get('last')
+        dob = request.form.get('dob')
     except:
         # this prints to shell, end users will not see this (all print statements go to shell)
         print("couldn't find all tokens")
-        return flask.redirect(flask.url_for('register'))
+        return redirect("http://127.0.0.1:3000/register")
+    # additional information
+    hometown = request.form.get('hometown')
+    gender = request.form.get('gender')
+    # check if email already exists (but don't compare to the password)
     cursor = conn.cursor()
     test = isEmailUnique(email)
     if test:
         print(cursor.execute(
-            "INSERT INTO Users (email, password) VALUES ('{0}', '{1}')".format(email, password)))
+            f"INSERT INTO Users (email, password, first_name, last_name, dob, hometown, gender) VALUES ('{email}', '{password}', '{first_name}', '{last_name}', '{dob}', '{hometown}', '{gender}')"))
         conn.commit()
         # log user in
         user = User()
         user.id = email
         flask_login.login_user(user)
-        return render_template('hello.html', name=email, message='Account Created!')
+        return redirect("http://127.0.0.1:3000/")
     else:
         print("couldn't find all tokens")
-        return flask.redirect(flask.url_for('register'))
+        return "Email in use, please try logging in or use a different email."
 
 
 def getUsersPhotos(uid):
