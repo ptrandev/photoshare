@@ -22,12 +22,12 @@ load_dotenv()
 
 mysql = MySQL()
 app = Flask(__name__)
-app.secret_key = 'super secret string'  # Change this!
+app.secret_key = 'DeltaEchoEchoZuluNovemberUniformTangoSierra'  # Change this!
 
 # These will need to be changed according to your creditionals
 app.config['MYSQL_DATABASE_USER'] = 'root'
 app.config['MYSQL_DATABASE_PASSWORD'] = os.getenv('password')
-app.config['MYSQL_DATABASE_DB'] = 'Photoshare'
+app.config['MYSQL_DATABASE_DB'] = 'photoshare'
 app.config['MYSQL_DATABASE_HOST'] = 'localhost'
 mysql.init_app(app)
 
@@ -208,6 +208,11 @@ def upload_file():
     else:
         return render_template('upload.html')
 # end photo uploading code
+
+@app.route('/friends', methods=['POST'])
+@flask_login.login_required
+def add_friend():
+    pass 
 
 
 # default page

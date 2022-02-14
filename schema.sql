@@ -1,5 +1,5 @@
-CREATE DATABASE Photoshare;
-USE Photoshare;
+CREATE DATABASE photoshare;
+USE photoshare;
 
 CREATE TABLE Users (
   user_id int4 AUTO_INCREMENT,
@@ -62,5 +62,5 @@ CREATE TABLE Has_Tag (
   CONSTRAINT photo_id FOREIGN KEY (photo_id) REFERENCES Photos(photo_id)
 );
 
-INSERT INTO Users (email, password) VALUES ('dcmag@bu.edu', 'dcmag');
-INSERT INTO Users (email, password) VALUES ('ptrandev@bu.edu', 'ptrandev');
+INSERT INTO Users (email, password, first_name, last_name, dob, hometown, gender) VALUES ('dcmag@bu.edu', 'dcmag', 'Dominic', 'Maglione', '2001-12-18', 'Waterford', 'Male');
+INSERT INTO Users (email, password, first_name, last_name, dob, hometown, gender) VALUES ('ptrandev@bu.edu', 'ptrandev', 'Phillip', 'Tran', '2002-01-29', 'Lowell', 'Male');
