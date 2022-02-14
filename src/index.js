@@ -2,6 +2,9 @@ import React from 'react';
 import ReactDOM from 'react-dom';
 import { BrowserRouter } from 'react-router-dom';
 import Normalize from 'react-normalize';
+import LocalizationProvider from '@mui/lab/LocalizationProvider';
+import AdapterDateFns from '@mui/lab/AdapterDateFns';
+
 
 import App from './App';
 import reportWebVitals from './reportWebVitals';
@@ -9,8 +12,10 @@ import reportWebVitals from './reportWebVitals';
 ReactDOM.render(
   <React.StrictMode>
     <BrowserRouter>
-      <Normalize/>
-      <App />
+      <LocalizationProvider dateAdapter={AdapterDateFns}>
+        <Normalize />
+        <App />
+      </LocalizationProvider>
     </BrowserRouter>
   </React.StrictMode>,
   document.getElementById("root")
