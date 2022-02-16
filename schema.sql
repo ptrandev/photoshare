@@ -4,13 +4,13 @@ USE photoshare;
 
 CREATE TABLE Users (
   user_id int4 AUTO_INCREMENT,
-  first_name VARCHAR(255),
-  last_name VARCHAR(255),
-  email VARCHAR(255) UNIQUE,
+  first_name VARCHAR(255) NOT NULL,
+  last_name VARCHAR(255) NOT NULL,
+  email VARCHAR(255) NOT NULL UNIQUE,
   dob DATETIME,
   hometown VARCHAR(255),
   gender VARCHAR(255),
-  password VARCHAR(255),
+  password VARCHAR(255) NOT NULL,
   CONSTRAINT user_pk PRIMARY KEY (user_id)
 );
 
@@ -24,7 +24,7 @@ CREATE TABLE Friends (
 CREATE TABLE Albums (
   album_id int4 AUTO_INCREMENT,
   user_id int4,
-  album_name VARCHAR(255),
+  album_name VARCHAR(255) NOT NULL,
   created DATETIME,
   CONSTRAINT album_pk PRIMARY KEY (album_id),
   FOREIGN KEY (user_id) REFERENCES Users(user_id)  
@@ -34,7 +34,7 @@ CREATE TABLE Photos (
   photo_id int4 AUTO_INCREMENT,
   album_id int4,
   caption VARCHAR(255),
-  data VARCHAR(255),
+  data VARCHAR(255) NOT NULL,
   CONSTRAINT photo_pk PRIMARY KEY (photo_id),
   CONSTRAINT album_id FOREIGN KEY (album_id) REFERENCES Albums(album_id)
 );
@@ -52,7 +52,7 @@ CREATE TABLE Comments (
 
 CREATE TABLE Tags (
   tag_id int4 AUTO_INCREMENT,
-  tag_name VARCHAR(255),
+  tag_name VARCHAR(255) NOT NULL UNIQUE,
   CONSTRAINT tag_pk PRIMARY KEY (tag_id)
 );
 
