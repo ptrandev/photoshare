@@ -1,3 +1,4 @@
+DROP DATABASE photoshare;
 CREATE DATABASE photoshare;
 USE photoshare;
 
@@ -13,7 +14,7 @@ CREATE TABLE Users (
   CONSTRAINT user_pk PRIMARY KEY (user_id)
 );
 
-CREATE TABLE Are_Friend (
+CREATE TABLE Friends (
   friend_a int4,
   friend_b int4,
   CONSTRAINT friend_a FOREIGN KEY (friend_a) REFERENCES Users(user_id),
