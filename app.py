@@ -1,33 +1,33 @@
 ### IMPORTS ###
-# Base Imports #
+# Base Imports
 import base64
 import os
 
-# Flask Imports #
+# Flask Imports
 import flask
 from flask import Flask, Response, request, render_template, redirect, url_for, jsonify
 from flaskext.mysql import MySQL
 import flask_login
 
-# Environtment Imports #
+# Environtment Imports 
 from dotenv import load_dotenv
 load_dotenv()
 
 
 ### CONFIGURATION ###
-# Define APP and SQL #
+# Define APP and SQL 
 mysql = MySQL()
 app = Flask(__name__)
 app.secret_key = 'DeltaEchoEchoZuluNovemberUniformTangoSierra'  # A little throwback
 
-# SQL Configuration #
+# SQL Configuration 
 app.config['MYSQL_DATABASE_USER'] = 'root'
 app.config['MYSQL_DATABASE_PASSWORD'] = os.getenv('password')
 app.config['MYSQL_DATABASE_DB'] = 'photoshare'
 app.config['MYSQL_DATABASE_HOST'] = 'localhost'
 mysql.init_app(app)
 
-# Login Code #
+# Login Code 
 login_manager = flask_login.LoginManager()
 login_manager.init_app(app)
 conn = mysql.connect()
