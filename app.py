@@ -1,201 +1,310 @@
-######################################
-# author ben lawson <balawson@bu.edu>
-# Edited by: Craig Einstein <einstein@bu.edu>
-######################################
-# Some code adapted from
-# CodeHandBook at http://codehandbook.org/python-web-application-development-using-flask-and-mysql/
-# and MaxCountryMan at https://github.com/maxcountryman/flask-login/
-# and Flask Offical Tutorial at  http://flask.pocoo.org/docs/0.10/patterns/fileuploads/
-# see links for further understanding
-###################################################
+### IMPORTS ###
+# Base Imports #
+import base64
+import os
 
+# Flask Imports #
 import flask
-from flask import Flask, Response, request, render_template, redirect, url_for
+from flask import Flask, Response, request, render_template, redirect, url_for, jsonify
 from flaskext.mysql import MySQL
 import flask_login
 
-#for image uploading
-import os, base64
+# Environtment Imports #
+from dotenv import load_dotenv
+load_dotenv()
 
+
+### CONFIGURATION ###
+# Define APP and SQL #
 mysql = MySQL()
 app = Flask(__name__)
-app.secret_key = 'super secret string'  # Change this!
+app.secret_key = 'DeltaEchoEchoZuluNovemberUniformTangoSierra'  # A little throwback
 
-#These will need to be changed according to your creditionals
+# SQL Configuration #
 app.config['MYSQL_DATABASE_USER'] = 'root'
-app.config['MYSQL_DATABASE_PASSWORD'] = 'cs460'
+app.config['MYSQL_DATABASE_PASSWORD'] = os.getenv('password')
 app.config['MYSQL_DATABASE_DB'] = 'photoshare'
 app.config['MYSQL_DATABASE_HOST'] = 'localhost'
 mysql.init_app(app)
 
-#begin code used for login
+# Login Code #
 login_manager = flask_login.LoginManager()
 login_manager.init_app(app)
-
 conn = mysql.connect()
 cursor = conn.cursor()
 cursor.execute("SELECT email from Users")
 users = cursor.fetchall()
 
-def getUserList():
-	cursor = conn.cursor()
-	cursor.execute("SELECT email from Users")
-	return cursor.fetchall()
 
+### LOGIN MANAGEMENT ###
+# User Class
 class User(flask_login.UserMixin):
-	pass
+    pass
+
+# Managers
+
 
 @login_manager.user_loader
 def user_loader(email):
-	users = getUserList()
-	if not(email) or email not in str(users):
-		return
-	user = User()
-	user.id = email
-	return user
+    users = getUserList()
+    if not(email) or email not in str(users):
+        return
+    user = User()
+    user.id = email
+    return user
+
 
 @login_manager.request_loader
 def request_loader(request):
-	users = getUserList()
-	email = request.form.get('email')
-	if not(email) or email not in str(users):
-		return
-	user = User()
-	user.id = email
-	cursor = mysql.connect().cursor()
-	cursor.execute("SELECT password FROM Users WHERE email = '{0}'".format(email))
-	data = cursor.fetchall()
-	pwd = str(data[0][0] )
-	user.is_authenticated = request.form['password'] == pwd
-	return user
+    users = getUserList()
+    email = request.form.get('email')
+    if not(email) or email not in str(users):
+        return
+    user = User()
+    user.id = email
+    cursor = mysql.connect().cursor()
+    cursor.execute(
+        f"SELECT password FROM Users WHERE email = '{email}'")
+    data = cursor.fetchall()
+    pwd = str(data[0][0])
+    user.is_authenticated = request.form['password'] == pwd
+    return user
 
-'''
-A new page looks like this:
-@app.route('new_page_name')
-def new_page_function():
-	return new_page_html
-'''
-
-@app.route('/login', methods=['GET', 'POST'])
-def login():
-	if flask.request.method == 'GET':
-		return '''
-			   <form action='login' method='POST'>
-				<input type='text' name='email' id='email' placeholder='email'></input>
-				<input type='password' name='password' id='password' placeholder='password'></input>
-				<input type='submit' name='submit'></input>
-			   </form></br>
-		   <a href='/'>Home</a>
-			   '''
-	#The request method is POST (page is recieving data)
-	email = flask.request.form['email']
-	cursor = conn.cursor()
-	#check if email is registered
-	if cursor.execute("SELECT password FROM Users WHERE email = '{0}'".format(email)):
-		data = cursor.fetchall()
-		pwd = str(data[0][0] )
-		if flask.request.form['password'] == pwd:
-			user = User()
-			user.id = email
-			flask_login.login_user(user) #okay login in user
-			return flask.redirect(flask.url_for('protected')) #protected is a function defined in this file
-
-	#information did not match
-	return "<a href='/login'>Try again</a>\
-			</br><a href='/register'>or make an account</a>"
-
-@app.route('/logout')
-def logout():
-	flask_login.logout_user()
-	return render_template('hello.html', message='Logged out')
 
 @login_manager.unauthorized_handler
 def unauthorized_handler():
-	return render_template('unauth.html')
+    return render_template('unauth.html')
 
-#you can specify specific methods (GET/POST) in function header instead of inside the functions as seen earlier
-@app.route("/register", methods=['GET'])
-def register():
-	return render_template('register.html', supress='True')
+# API Calls
+
+
+@app.route('/login', methods=['POST'])
+def login():
+    # The request method is POST (page is recieving data)
+    email = flask.request.form['email']
+    cursor = conn.cursor()
+
+    # Check if email is already registered
+    if cursor.execute(f"SELECT password FROM Users WHERE email = '{email}'"):
+        data = cursor.fetchall()
+        pwd = str(data[0][0])
+        if flask.request.form['password'] == pwd:
+            user = User()
+            user.id = email
+
+            # Login in user
+            flask_login.login_user(user)
+            return flask.redirect("http://127.0.0.1:3000/")
+
+    # Information did not match
+    return "Incorrect login information, please try again or create an account."
+
+
+@app.route('/logout', methods=['GET'])
+def logout():
+    flask_login.logout_user()
+    return redirect("http://127.0.0.1:3000/login")
+
 
 @app.route("/register", methods=['POST'])
-def register_user():
-	try:
-		email=request.form.get('email')
-		password=request.form.get('password')
-	except:
-		print("couldn't find all tokens") #this prints to shell, end users will not see this (all print statements go to shell)
-		return flask.redirect(flask.url_for('register'))
-	cursor = conn.cursor()
-	test =  isEmailUnique(email)
-	if test:
-		print(cursor.execute("INSERT INTO Users (email, password) VALUES ('{0}', '{1}')".format(email, password)))
-		conn.commit()
-		#log user in
-		user = User()
-		user.id = email
-		flask_login.login_user(user)
-		return render_template('hello.html', name=email, message='Account Created!')
-	else:
-		print("couldn't find all tokens")
-		return flask.redirect(flask.url_for('register'))
+def register():
+    # Required information
+    try:
+        email = request.form.get('email')
+        password = request.form.get('password')
+        first_name = request.form.get('first')
+        last_name = request.form.get('last')
+        dob = request.form.get('dob')
+    except:
+        # This prints to shell, end users will not see this (all print statements go to shell)
+        print("couldn't find all tokens")
+        return redirect("http://127.0.0.1:3000/register")
+
+    # Additional information
+    hometown = request.form.get('hometown')
+    gender = request.form.get('gender')
+    cursor = conn.cursor()
+    test = isEmailUnique(email)
+    if test:
+        print(cursor.execute(
+            f"INSERT INTO Users (email, password, first_name, last_name, dob, hometown, gender) VALUES ('{email}', '{password}', '{first_name}', '{last_name}', '{dob}', '{hometown}', '{gender}')"))
+        conn.commit()
+        user = User()
+        user.id = email
+        flask_login.login_user(user)  # Log user in
+        return redirect("http://127.0.0.1:3000/")
+    else:
+        print("couldn't find all tokens")
+        return "Email in use, please try logging in or use a different email."
+
+
+### USERS ###
+# Accessor Methods
+def getUserList():
+    cursor = conn.cursor()
+    cursor.execute("SELECT email from Users")
+    return cursor.fetchall()
+
 
 def getUsersPhotos(uid):
-	cursor = conn.cursor()
-	cursor.execute("SELECT imgdata, picture_id, caption FROM Pictures WHERE user_id = '{0}'".format(uid))
-	return cursor.fetchall() #NOTE return a list of tuples, [(imgdata, pid, caption), ...]
+    cursor = conn.cursor()
+    cursor.execute(
+        f"SELECT imgdata, picture_id, caption FROM Pictures WHERE user_id = '{uid}'")
+    # NOTE return a list of tuples, [(imgdata, pid, caption), ...]
+    return cursor.fetchall()
+
 
 def getUserIdFromEmail(email):
-	cursor = conn.cursor()
-	cursor.execute("SELECT user_id  FROM Users WHERE email = '{0}'".format(email))
-	return cursor.fetchone()[0]
+    cursor = conn.cursor()
+    cursor.execute(
+        f"SELECT user_id  FROM Users WHERE email = '{email}'")
+    return cursor.fetchone()[0]
+
+# Check Email Uniqueness
+
 
 def isEmailUnique(email):
-	#use this to check if a email has already been registered
-	cursor = conn.cursor()
-	if cursor.execute("SELECT email  FROM Users WHERE email = '{0}'".format(email)):
-		#this means there are greater than zero entries with that email
-		return False
-	else:
-		return True
-#end login code
+    # use this to check if a email has already been registered
+    cursor = conn.cursor()
+    if cursor.execute(f"SELECT email  FROM Users WHERE email = '{email}'"):
+        # this means there are greater than zero entries with that email
+        return False
+    else:
+        return True
+
+# User Profile
+
 
 @app.route('/profile')
 @flask_login.login_required
 def protected():
-	return render_template('hello.html', name=flask_login.current_user.id, message="Here's your profile")
+    return render_template('hello.html', name=flask_login.current_user.id, message="Here's your profile")
 
-#begin photo uploading code
+
+### FRIENDS ###
+# Add/Remove Friends
+@app.route('/friends/edit', methods=['POST'])
+@flask_login.login_required
+def add_friend():
+    # Get id from email
+    email = flask_login.current_user.id
+    cursor = conn.cursor()
+    cursor.execute(f"SELECT user_id FROM Users WHERE email = '{email}'")
+
+    # Get ids of current user and friend
+    user_id = cursor.fetchone()[0]
+    friend_id = request.json['friend_id']
+
+    # Add friend to current user
+    cursor = conn.cursor()
+    cursor.execute(
+        f"INSERT INTO Friends (friend_a, friend_b) VALUES ('{user_id}', '{friend_id}')")
+    cursor.execute(
+        f"INSERT INTO Friends (friend_a, friend_b) VALUES ('{friend_id}', '{user_id}')")
+
+    return "Friend Added"
+
+
+def remove_friend():
+    # Get id from email
+    email = flask_login.current_user.id
+    cursor = conn.cursor()
+    cursor.execute(f"SELECT user_id FROM Users WHERE email = '{email}'")
+
+    # Get ids of current user and friend
+    user_id = cursor.fetchone()[0]
+    friend_id = request.json['friend_id']
+
+    # Remove friend from current user
+    cursor = conn.cursor()
+    cursor.execute(
+        f"DELETE FROM Friends WHERE friend_a = '{user_id}' AND friend_b = '{friend_id}'")
+    cursor.execute(
+        f"DELETE FROM Friends WHERE friend_a = '{friend_id}' AND friend_b = '{user_id}'")
+
+    return "Friend Removed"
+
+# Search Friends
+
+
+@app.route('/friends/search', methods=['GET'])
+def search_friends():
+    # Get query
+    query = request.args['query'].split()
+    cursor = conn.cursor()
+
+    # Check if query contains 'first' or 'first last'
+    if len(query) == 2:
+        cursor.execute(
+            f"SELECT user_id FROM Users WHERE first_name LIKE '{query[0]}%' AND last_name LIKE '{query[1]}%'")
+        query = [x[0] for x in cursor.fetchall()]
+        return jsonify(query)
+    else:
+        cursor.execute(
+            f"SELECT user_id FROM Users WHERE first_name LIKE '{query[0]}%'")
+        query = [x[0] for x in cursor.fetchall()]
+        return jsonify(query)
+
+
+# List Friends
+@app.route('/friends/list', methods=['GET'])
+@flask_login.login_required
+def list_friends():
+    # Get id from email
+    email = flask_login.current_user.id
+    cursor = conn.cursor()
+    cursor.execute(f"SELECT user_id FROM Users WHERE email = '{email}'")
+
+    # Get ids of current user and friend
+    user_id = cursor.fetchone()[0]
+
+    # Get friends
+    cursor = conn.cursor()
+    cursor.execute(
+        f"SELECT F.friend_b, U.first_name, U.last_name FROM Friends F JOIN Users U ON U.user_id = F.friend_b WHERE friend_a = '{user_id}'")
+    friends = [{
+        "friend_id": x[0],
+        "friend_name": x[1] + " " + x[2]
+    } for x in cursor.fetchall()]
+
+    return jsonify(friends)
+
+
+### ALBUMS ###
+
+# begin photo uploading code
 # photos uploaded using base64 encoding so they can be directly embeded in HTML
 ALLOWED_EXTENSIONS = set(['png', 'jpg', 'jpeg', 'gif'])
+
+
 def allowed_file(filename):
-	return '.' in filename and filename.rsplit('.', 1)[1] in ALLOWED_EXTENSIONS
+    return '.' in filename and filename.rsplit('.', 1)[1] in ALLOWED_EXTENSIONS
+
 
 @app.route('/upload', methods=['GET', 'POST'])
 @flask_login.login_required
 def upload_file():
-	if request.method == 'POST':
-		uid = getUserIdFromEmail(flask_login.current_user.id)
-		imgfile = request.files['photo']
-		caption = request.form.get('caption')
-		photo_data =imgfile.read()
-		cursor = conn.cursor()
-		cursor.execute('''INSERT INTO Pictures (imgdata, user_id, caption) VALUES (%s, %s, %s )''', (photo_data, uid, caption))
-		conn.commit()
-		return render_template('hello.html', name=flask_login.current_user.id, message='Photo uploaded!', photos=getUsersPhotos(uid), base64=base64)
-	#The method is GET so we return a  HTML form to upload the a photo.
-	else:
-		return render_template('upload.html')
-#end photo uploading code
+    if request.method == 'POST':
+        uid = getUserIdFromEmail(flask_login.current_user.id)
+        imgfile = request.files['photo']
+        caption = request.form.get('caption')
+        photo_data = imgfile.read()
+        cursor = conn.cursor()
+        cursor.execute(
+            '''INSERT INTO Pictures (imgdata, user_id, caption) VALUES (%s, %s, %s )''', (photo_data, uid, caption))
+        conn.commit()
+        return render_template('hello.html', name=flask_login.current_user.id, message='Photo uploaded!', photos=getUsersPhotos(uid), base64=base64)
+    # The method is GET so we return a  HTML form to upload the a photo.
+    else:
+        return render_template('upload.html')
 
 
-#default page
+### ROOT ###
 @app.route("/", methods=['GET'])
 def hello():
-	return render_template('hello.html', message='Welecome to Photoshare')
+    return render_template('hello.html', message='Welecome to Photoshare')
 
 
+### DEBUGGING ###
 if __name__ == "__main__":
-	#this is invoked when in the shell  you run
-	#$ python app.py
-	app.run(port=5000, debug=True)
+    app.run(port=5000, debug=True)
