@@ -1,10 +1,17 @@
+import type { FC } from 'react';
+
 import {
   Box,
   Paper,
   Typography,
 } from '@mui/material';
 
-const AuthCard = (props) => {
+interface AuthCardProps {
+  children: React.ReactNode;
+  title: string;
+}
+
+const AuthCard : FC <AuthCardProps> = (props) => {
   const { children, title } = props;
 
   return (

@@ -1,0 +1,1 @@
+export { default as SearchAddFriend } from './SearchAddFriend';
