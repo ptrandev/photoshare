@@ -1,16 +1,27 @@
 import React from 'react';
 import ReactDOM from 'react-dom';
 import { BrowserRouter } from 'react-router-dom';
-import Normalize from 'react-normalize';
+import LocalizationProvider from '@mui/lab/LocalizationProvider';
+import AdapterDateFns from '@mui/lab/AdapterDateFns';
+import axios from 'axios';
+import { SnackbarProvider } from 'notistack';
 
 import App from './App';
 import reportWebVitals from './reportWebVitals';
 
+import 'normalize.css';
+
+axios.defaults.baseURL = 'http://127.0.0.1:5000';
+axios.defaults.withCredentials = true;
+
 ReactDOM.render(
   <React.StrictMode>
     <BrowserRouter>
-      <Normalize/>
-      <App />
+      <LocalizationProvider dateAdapter={AdapterDateFns}>
+        <SnackbarProvider maxSnack={3}>
+          <App />
+        </SnackbarProvider>
+      </LocalizationProvider>
     </BrowserRouter>
   </React.StrictMode>,
   document.getElementById("root")

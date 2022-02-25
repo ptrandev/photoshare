@@ -8,9 +8,13 @@ import flask
 from flask import Flask, Response, request, render_template, redirect, url_for, jsonify
 from flaskext.mysql import MySQL
 import flask_login
+from flask_cors import CORS, cross_origin
+from flask_jwt_extended import create_access_token,get_jwt,get_jwt_identity, unset_jwt_cookies, jwt_required, JWTManager
+from datetime import datetime, timedelta, timezone
 
 # Environtment Imports #
 from dotenv import load_dotenv
+from itsdangerous import json
 load_dotenv()
 
 
@@ -18,6 +22,8 @@ load_dotenv()
 # Define APP and SQL #
 mysql = MySQL()
 app = Flask(__name__)
+CORS(app, supports_credentials=True, origin="http://127.0.0.1:3000")
+
 app.secret_key = 'DeltaEchoEchoZuluNovemberUniformTangoSierra'  # A little throwback
 
 # SQL Configuration #
@@ -26,6 +32,10 @@ app.config['MYSQL_DATABASE_PASSWORD'] = os.getenv('password')
 app.config['MYSQL_DATABASE_DB'] = 'photoshare'
 app.config['MYSQL_DATABASE_HOST'] = 'localhost'
 mysql.init_app(app)
+
+app.config["JWT_SECRET_KEY"] = "DeltaEchoEchoZuluNovemberUniformTangoSierra"
+jwt = JWTManager(app)
+app.config["JWT_ACCESS_TOKEN_EXPIRES"] = timedelta(hours=1)
 
 # Login Code #
 login_manager = flask_login.LoginManager()
@@ -42,7 +52,6 @@ class User(flask_login.UserMixin):
     pass
 
 # Managers
-
 
 @login_manager.user_loader
 def user_loader(email):
@@ -70,72 +79,74 @@ def request_loader(request):
     user.is_authenticated = request.form['password'] == pwd
     return user
 
+## AUTHENTICATION ##
 
-@login_manager.unauthorized_handler
-def unauthorized_handler():
-    return render_template('unauth.html')
+@app.route('/token', methods=["POST"])
+def create_token():
+    email = request.json.get("email", None)
+    password = request.json.get("password", None)
 
-# API Calls
-
-
-@app.route('/login', methods=['POST'])
-def login():
-    # The request method is POST (page is recieving data)
-    email = flask.request.form['email']
-    cursor = conn.cursor()
-
-    # Check if email is already registered
     if cursor.execute(f"SELECT password FROM Users WHERE email = '{email}'"):
         data = cursor.fetchall()
         pwd = str(data[0][0])
-        if flask.request.form['password'] == pwd:
-            user = User()
-            user.id = email
+        if password == pwd:
+            access_token = create_access_token(identity=email)
+            response = {"access_token": access_token}
+            return response
 
-            # Login in user
-            flask_login.login_user(user)
-            return flask.redirect("http://127.0.0.1:3000/")
+    return {"msg": "Wrong email or password"}, 401
 
-    # Information did not match
-    return "Incorrect login information, please try again or create an account."
-
-
-@app.route('/logout', methods=['GET'])
+@app.route("/logout", methods=["POST"])
 def logout():
-    flask_login.logout_user()
-    return redirect("http://127.0.0.1:3000/login")
+    response = jsonify({"msg": "logout successful"})
+    unset_jwt_cookies(response)
+    return response
 
+@app.after_request
+def refresh_expiring_jwts(response):
+    try:
+        exp_timestamp = get_jwt()["exp"]
+        now = datetime.now(timezone.utc)
+        target_timestamp = datetime.timestamp(now + timedelta(minutes=30))
+        if target_timestamp > exp_timestamp:
+            access_token = create_access_token(identity=get_jwt_identity())
+            data = response.get_json()
+            if type(data) is dict:
+                data["access_token"] = access_token 
+                response.data = json.dumps(data)
+        return response
+    except (RuntimeError, KeyError):
+        # Case where there is not a valid JWT. Just return the original respone
+        return response
 
 @app.route("/register", methods=['POST'])
 def register():
     # Required information
     try:
-        email = request.form.get('email')
-        password = request.form.get('password')
-        first_name = request.form.get('first')
-        last_name = request.form.get('last')
-        dob = request.form.get('dob')
+        email = request.json.get('email')
+        password = request.json.get('password')
+        first_name = request.json.get('firstName')
+        last_name = request.json.get('lastName')
+        dob = request.json.get('dob')
     except:
         # This prints to shell, end users will not see this (all print statements go to shell)
         print("couldn't find all tokens")
-        return redirect("http://127.0.0.1:3000/register")
+        return {"success": False}
 
     # Additional information
-    hometown = request.form.get('hometown')
-    gender = request.form.get('gender')
+    hometown = request.json.get('hometown')
+    gender = request.json.get('gender')
     cursor = conn.cursor()
     test = isEmailUnique(email)
     if test:
         print(cursor.execute(
             f"INSERT INTO Users (email, password, first_name, last_name, dob, hometown, gender) VALUES ('{email}', '{password}', '{first_name}', '{last_name}', '{dob}', '{hometown}', '{gender}')"))
         conn.commit()
-        user = User()
-        user.id = email
-        flask_login.login_user(user)  # Log user in
-        return redirect("http://127.0.0.1:3000/")
+
+        return {"success": True}
     else:
         print("couldn't find all tokens")
-        return "Email in use, please try logging in or use a different email."
+        return {"success": False}
 
 
 ### USERS ###
