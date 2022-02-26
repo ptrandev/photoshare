@@ -45,14 +45,15 @@ cursor = conn.cursor()
 cursor.execute("SELECT email from Users")
 users = cursor.fetchall()
 
-
-### LOGIN MANAGEMENT ###
-# User Class
+# Login Manager
 class User(flask_login.UserMixin):
     pass
 
+<<<<<<< Updated upstream
 # Managers
 
+=======
+>>>>>>> Stashed changes
 @login_manager.user_loader
 def user_loader(email):
     users = getUserList()
@@ -61,7 +62,6 @@ def user_loader(email):
     user = User()
     user.id = email
     return user
-
 
 @login_manager.request_loader
 def request_loader(request):
@@ -79,6 +79,7 @@ def request_loader(request):
     user.is_authenticated = request.form['password'] == pwd
     return user
 
+<<<<<<< Updated upstream
 ## AUTHENTICATION ##
 
 @app.route('/token', methods=["POST"])
@@ -86,6 +87,21 @@ def create_token():
     email = request.json.get("email", None)
     password = request.json.get("password", None)
 
+=======
+@login_manager.unauthorized_handler
+def unauthorized_handler():
+    return render_template('unauth.html')
+
+
+### LOGIN ROUTER ###
+@app.route('/login', methods=['POST'])
+def login():
+    # The request method is POST (page is recieving data)
+    email = flask.request.form['email']
+    cursor = conn.cursor()
+
+    # Check if email is already registered
+>>>>>>> Stashed changes
     if cursor.execute(f"SELECT password FROM Users WHERE email = '{email}'"):
         data = cursor.fetchall()
         pwd = str(data[0][0])
@@ -94,14 +110,19 @@ def create_token():
             response = {"access_token": access_token}
             return response
 
+<<<<<<< Updated upstream
     return {"msg": "Wrong email or password"}, 401
 
 @app.route("/logout", methods=["POST"])
+=======
+@app.route('/logout', methods=['GET'])
+>>>>>>> Stashed changes
 def logout():
     response = jsonify({"msg": "logout successful"})
     unset_jwt_cookies(response)
     return response
 
+<<<<<<< Updated upstream
 @app.after_request
 def refresh_expiring_jwts(response):
     try:
@@ -119,6 +140,8 @@ def refresh_expiring_jwts(response):
         # Case where there is not a valid JWT. Just return the original respone
         return response
 
+=======
+>>>>>>> Stashed changes
 @app.route("/register", methods=['POST'])
 def register():
     # Required information
@@ -149,13 +172,12 @@ def register():
         return {"success": False}
 
 
-### USERS ###
+### USER ROUTER ###
 # Accessor Methods
 def getUserList():
     cursor = conn.cursor()
     cursor.execute("SELECT email from Users")
     return cursor.fetchall()
-
 
 def getUsersPhotos(uid):
     cursor = conn.cursor()
@@ -164,7 +186,6 @@ def getUsersPhotos(uid):
     # NOTE return a list of tuples, [(imgdata, pid, caption), ...]
     return cursor.fetchall()
 
-
 def getUserIdFromEmail(email):
     cursor = conn.cursor()
     cursor.execute(
@@ -172,8 +193,6 @@ def getUserIdFromEmail(email):
     return cursor.fetchone()[0]
 
 # Check Email Uniqueness
-
-
 def isEmailUnique(email):
     # use this to check if a email has already been registered
     cursor = conn.cursor()
@@ -183,17 +202,16 @@ def isEmailUnique(email):
     else:
         return True
 
-# User Profile
 
-
+### PROFILE ROUTER ###
 @app.route('/profile')
 @flask_login.login_required
 def protected():
     return render_template('hello.html', name=flask_login.current_user.id, message="Here's your profile")
 
 
-### FRIENDS ###
-# Add/Remove Friends
+### FRIEND ROUTER ###
+# Add Friends
 @app.route('/friends/edit', methods=['POST'])
 @flask_login.login_required
 def add_friend():
@@ -215,7 +233,7 @@ def add_friend():
 
     return "Friend Added"
 
-
+# Remove Friends
 def remove_friend():
     # Get id from email
     email = flask_login.current_user.id
@@ -236,8 +254,6 @@ def remove_friend():
     return "Friend Removed"
 
 # Search Friends
-
-
 @app.route('/friends/search', methods=['GET'])
 def search_friends():
     # Get query
@@ -255,7 +271,6 @@ def search_friends():
             f"SELECT user_id FROM Users WHERE first_name LIKE '{query[0]}%'")
         query = [x[0] for x in cursor.fetchall()]
         return jsonify(query)
-
 
 # List Friends
 @app.route('/friends/list', methods=['GET'])
@@ -281,7 +296,17 @@ def list_friends():
     return jsonify(friends)
 
 
-### ALBUMS ###
+### ALBUM ROUTER ###
+@app.route('/albums/images', methods=['GET'])
+def get_album_image():
+    pass
+
+# Create an album
+@app.route('/albums/create', methods=['POST'])
+@flask_login.login_required
+def create_album():
+    pass
+
 
 # begin photo uploading code
 # photos uploaded using base64 encoding so they can be directly embeded in HTML
