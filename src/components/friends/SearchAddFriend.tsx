@@ -34,10 +34,14 @@ const SearchAddFriend : FC = () => {
 
   const handleSubmit = () => {
     if (!formValue.firstName || !formValue.lastName) {
-      return enqueueSnackbar("Fill out all required fields.", {
+      return enqueueSnackbar("Fill out all required fields to search.", {
         variant: "error",
       });
     }
+
+    axios.get(`/friends/search?firstName=${formValue.firstName}&lastName=${formValue.lastName}`).then(res => {
+      console.log(res)
+    })
   }
 
   return (
