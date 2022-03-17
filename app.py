@@ -241,7 +241,7 @@ def remove_friend():
 @app.route('/friends/search', methods=['GET'])
 def search_friends():
     # Get query
-    query = request.args['query'].split()
+    query = [request.args.get('firstName'), request.args.get('lastName')]
     cursor = conn.cursor()
 
     # Check if query contains 'first' or 'first last'
