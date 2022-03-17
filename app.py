@@ -9,12 +9,12 @@ from flask import Flask, Response, request, render_template, redirect, url_for, 
 from flaskext.mysql import MySQL
 import flask_login
 from flask_cors import CORS, cross_origin
-from flask_jwt_extended import create_access_token,get_jwt,get_jwt_identity, unset_jwt_cookies, jwt_required, JWTManager
+from flask_jwt_extended import create_access_token, get_jwt, get_jwt_identity, unset_jwt_cookies, jwt_required, JWTManager
 from datetime import datetime, timedelta, timezone
 
 # Environtment Imports #
 from dotenv import load_dotenv
-from itsdangerous import json
+import json
 load_dotenv()
 
 
@@ -49,11 +49,7 @@ users = cursor.fetchall()
 class User(flask_login.UserMixin):
     pass
 
-<<<<<<< Updated upstream
-# Managers
-
-=======
->>>>>>> Stashed changes
+# Managers #
 @login_manager.user_loader
 def user_loader(email):
     users = getUserList()
@@ -62,6 +58,7 @@ def user_loader(email):
     user = User()
     user.id = email
     return user
+
 
 @login_manager.request_loader
 def request_loader(request):
@@ -79,29 +76,12 @@ def request_loader(request):
     user.is_authenticated = request.form['password'] == pwd
     return user
 
-<<<<<<< Updated upstream
-## AUTHENTICATION ##
-
+### AUTHENTICATION ###
 @app.route('/token', methods=["POST"])
 def create_token():
     email = request.json.get("email", None)
     password = request.json.get("password", None)
 
-=======
-@login_manager.unauthorized_handler
-def unauthorized_handler():
-    return render_template('unauth.html')
-
-
-### LOGIN ROUTER ###
-@app.route('/login', methods=['POST'])
-def login():
-    # The request method is POST (page is recieving data)
-    email = flask.request.form['email']
-    cursor = conn.cursor()
-
-    # Check if email is already registered
->>>>>>> Stashed changes
     if cursor.execute(f"SELECT password FROM Users WHERE email = '{email}'"):
         data = cursor.fetchall()
         pwd = str(data[0][0])
@@ -110,19 +90,16 @@ def login():
             response = {"access_token": access_token}
             return response
 
-<<<<<<< Updated upstream
     return {"msg": "Wrong email or password"}, 401
 
+
 @app.route("/logout", methods=["POST"])
-=======
-@app.route('/logout', methods=['GET'])
->>>>>>> Stashed changes
 def logout():
     response = jsonify({"msg": "logout successful"})
     unset_jwt_cookies(response)
     return response
 
-<<<<<<< Updated upstream
+
 @app.after_request
 def refresh_expiring_jwts(response):
     try:
@@ -133,15 +110,14 @@ def refresh_expiring_jwts(response):
             access_token = create_access_token(identity=get_jwt_identity())
             data = response.get_json()
             if type(data) is dict:
-                data["access_token"] = access_token 
+                data["access_token"] = access_token
                 response.data = json.dumps(data)
         return response
     except (RuntimeError, KeyError):
         # Case where there is not a valid JWT. Just return the original respone
         return response
 
-=======
->>>>>>> Stashed changes
+
 @app.route("/register", methods=['POST'])
 def register():
     # Required information
@@ -173,11 +149,12 @@ def register():
 
 
 ### USER ROUTER ###
-# Accessor Methods
+# Accessor Methods #
 def getUserList():
     cursor = conn.cursor()
     cursor.execute("SELECT email from Users")
     return cursor.fetchall()
+
 
 def getUsersPhotos(uid):
     cursor = conn.cursor()
@@ -186,13 +163,14 @@ def getUsersPhotos(uid):
     # NOTE return a list of tuples, [(imgdata, pid, caption), ...]
     return cursor.fetchall()
 
+
 def getUserIdFromEmail(email):
     cursor = conn.cursor()
     cursor.execute(
         f"SELECT user_id  FROM Users WHERE email = '{email}'")
     return cursor.fetchone()[0]
 
-# Check Email Uniqueness
+# Check Email Uniqueness #
 def isEmailUnique(email):
     # use this to check if a email has already been registered
     cursor = conn.cursor()
@@ -211,7 +189,7 @@ def protected():
 
 
 ### FRIEND ROUTER ###
-# Add Friends
+# Add Friends #
 @app.route('/friends/edit', methods=['POST'])
 @flask_login.login_required
 def add_friend():
@@ -233,7 +211,7 @@ def add_friend():
 
     return "Friend Added"
 
-# Remove Friends
+# Remove Friends #
 def remove_friend():
     # Get id from email
     email = flask_login.current_user.id
@@ -253,7 +231,7 @@ def remove_friend():
 
     return "Friend Removed"
 
-# Search Friends
+# Search Friends #
 @app.route('/friends/search', methods=['GET'])
 def search_friends():
     # Get query
@@ -272,7 +250,7 @@ def search_friends():
         query = [x[0] for x in cursor.fetchall()]
         return jsonify(query)
 
-# List Friends
+# List Friends #
 @app.route('/friends/list', methods=['GET'])
 @flask_login.login_required
 def list_friends():
@@ -301,7 +279,7 @@ def list_friends():
 def get_album_image():
     pass
 
-# Create an album
+# Create an album #
 @app.route('/albums/create', methods=['POST'])
 @flask_login.login_required
 def create_album():

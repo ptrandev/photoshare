@@ -6,3 +6,5 @@ requests
 Werkzeug
 cryptography
 python-dotenv
+flask_cors
+flask_jwt_extended
