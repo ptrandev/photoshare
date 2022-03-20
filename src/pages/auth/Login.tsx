@@ -7,7 +7,7 @@ import { useSnackbar } from 'notistack';
 import useToken from '../../hooks/useToken';
 
 import AuthCard from 'components/auth/AuthCard';
-import axios from 'axios';
+import axios from '../../utils/axios';
 
 const Login = () => {
   const { setToken } = useToken();

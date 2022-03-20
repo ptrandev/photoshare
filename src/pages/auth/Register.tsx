@@ -4,7 +4,7 @@ import { useState, useEffect } from 'react';
 import { Link as RouterLink, useNavigate } from 'react-router-dom';
 import { Typography, Box, Link, TextField, Stack, Button } from '@mui/material';
 import DatePicker from '@mui/lab/DatePicker';
-import axios from 'axios';
+import axios from '../../utils/axios';
 import { useSnackbar } from 'notistack';
 
 import AuthCard from 'components/auth/AuthCard';

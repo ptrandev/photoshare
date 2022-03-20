@@ -4,7 +4,6 @@ import { createContext, useState, useEffect } from 'react';
 const TokenContext = createContext<any>(undefined);
 
 export const TokenProvider : FC = ({ children }) => {
-
   const [token, setToken] = useState<string | undefined>(undefined);
 
   const getToken = () => {

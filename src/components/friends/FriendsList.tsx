@@ -1,7 +1,6 @@
 import type { FC } from 'react';
 import { useEffect, useState } from 'react';
-import axios from 'axios';
-import useToken from '../../hooks/useToken';
+import axios from '../../utils/axios';
 import {
   Typography,
   CardContent,
@@ -25,19 +24,15 @@ interface Friend {
 
 const FriendsList : FC = () => {
   const { enqueueSnackbar } = useSnackbar();
-  const { token } = useToken();
 
   const [friends, setFriends] = useState<Friend[]>([]);
 
   const fetchFriends = () => {
-    if (token) {
-      axios
-      .get("/friends/list")
-      .then((res) => {
-        console.log(res.data);
-        setFriends(res.data);
-      });
-    }
+    axios
+    .get("/friends/list")
+    .then((res) => {
+      setFriends(res.data);
+    });
   }
 
   const handleRemoveFriend = (userId) => {
@@ -57,8 +52,8 @@ const FriendsList : FC = () => {
   }
 
   useEffect(() => {
-    if (token) setTimeout(() => fetchFriends(), 500);
-  }, [token])
+    fetchFriends()
+  }, [])
 
   return (
     <Card>

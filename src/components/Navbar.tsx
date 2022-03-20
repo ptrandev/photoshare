@@ -14,7 +14,7 @@ import {
   Divider,
 } from "@mui/material";
 import { Link as RouterLink } from 'react-router-dom';
-import axios from 'axios';
+import axios from '../utils/axios';
 import useToken from '../hooks/useToken';
 
 import MenuIcon from '@mui/icons-material/Menu';

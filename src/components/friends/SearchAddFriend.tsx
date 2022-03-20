@@ -16,7 +16,7 @@ import {
   IconButton,
 } from "@mui/material";
 import { useSnackbar } from 'notistack';
-import axios from 'axios';
+import axios from '../../utils/axios';
 import AddCircleIcon from '@mui/icons-material/AddCircle';
 
 interface SearchResults {
