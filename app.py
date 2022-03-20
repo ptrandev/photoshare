@@ -30,7 +30,7 @@ mysql = MySQL()
 app = Flask(__name__)
 CORS(app, supports_credentials=True, origin="http://127.0.0.1:3000")
 
-app.secret_key = 'DeltaEchoEchoZuluNovemberUniformTangoSierra'  # A little throwback
+app.secret_key = 'DeltaEchoEchoZuluNovemberUniformTangoSierra'
 
 # SQL CONFIGURATION
 app.config['MYSQL_DATABASE_USER'] = 'root'
@@ -348,6 +348,14 @@ def upload_img():
         tags = form.get("tags_" + img).split(",")
 
         for tag in tags:
+            if tag == '': continue
+            
+            # Check if tag already exists
+            exists = cursor.execute(f"SELECT * FROM Tags WHERE tag='{tag}';")
+            if not exists:
+                cursor.execute(f"INSERT INTO Tags (tag) VALUES ('{tag}');")
+                conn.commit()
+            
             cursor.execute(f"SELECT tag_id FROM Tags WHERE tag='{tag}';")
             tag_id = cursor.fetchone()[0]
 
