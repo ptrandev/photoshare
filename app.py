@@ -207,9 +207,9 @@ def register():
 # - FRIENDS ROUTER - #
 # ------------------ #
 
-# ADD/REMOVE FRIENDS
-@app.route('/friends/edit', methods=['POST'])
-@flask_login.login_required
+# ADD FRIEND
+@app.route('/friends/add', methods=['POST'])
+@jwt_required()
 def add_friend():
     # Get id from email
     email = get_jwt_identity()
@@ -240,7 +240,7 @@ def add_friend():
 
     return jsonify({"success": True, "message": "Friend added."})
 
-# Remove Friends #
+# REMOVE FRIEND
 @app.route('/friends/remove', methods=['POST'])
 @jwt_required()
 def remove_friend():
@@ -262,7 +262,7 @@ def remove_friend():
 
     return {"success": True, "message": "Friend removed."}
 
-# SEARCH FOR FRIEND
+# SEARCH FOR FRIENDS
 @app.route('/friends/search', methods=['GET'])
 def search_friends():
     # Get query
@@ -274,7 +274,7 @@ def search_friends():
     query = cursor.fetchall()
     return jsonify(query)
 
-# LIST USER FRIENDS
+# LIST USER'S FRIENDS
 @app.route('/friends/list', methods=['GET'])
 @jwt_required()
 def list_friends():
