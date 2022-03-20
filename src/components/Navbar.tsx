@@ -12,10 +12,10 @@ import {
   ListItemText,
   ListItemIcon,
   Divider,
-  Link,
 } from "@mui/material";
 import { Link as RouterLink } from 'react-router-dom';
 import axios from 'axios';
+import useToken from '../hooks/useToken';
 
 import MenuIcon from '@mui/icons-material/Menu';
 import GroupIcon from '@mui/icons-material/Group';
@@ -86,8 +86,8 @@ const DrawerList = () => {
   );
 }
 
-const Navbar = (props) => {
-  const { token, removeToken } = props;
+const Navbar = () => {
+  const { token, removeToken } = useToken();
 
   const [isDrawerOpen, setIsDrawerOpen] = useState(false);
 
@@ -96,9 +96,9 @@ const Navbar = (props) => {
   }
 
   const handleLogout = () => {
-    axios.post('/logout').then((res) => {
-      console.log(res);
+    axios.post('/logout').then(() => {
       removeToken();
+      window.location.href = '/';
     });
   }
 

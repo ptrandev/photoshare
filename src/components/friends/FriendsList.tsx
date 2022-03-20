@@ -57,7 +57,7 @@ const FriendsList : FC = () => {
   }
 
   useEffect(() => {
-    if (token) setTimeout(() => fetchFriends(), 1000);
+    if (token) setTimeout(() => fetchFriends(), 500);
   }, [token])
 
   return (
@@ -71,12 +71,12 @@ const FriendsList : FC = () => {
             <ListItem
               key={`${friend.user_id}-${friend.first_name}`}
               secondaryAction={
-                <IconButton>
-                  <RemoveCircleIcon
-                    onClick={() => {
-                      handleRemoveFriend(friend.user_id);
-                    }}
-                  />
+                <IconButton
+                  onClick={() => {
+                    handleRemoveFriend(friend.user_id);
+                  }}
+                >
+                  <RemoveCircleIcon />
                 </IconButton>
               }
             >

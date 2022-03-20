@@ -63,7 +63,7 @@ const SearchAddFriend : FC = () => {
         variant: res.data.success ? "success" : "error",
       });
 
-      window.location.reload()
+      if (res.data.success) window.location.reload()
     }).catch(() => {
       enqueueSnackbar("An error occurred", {
         variant: "error",
@@ -108,12 +108,15 @@ const SearchAddFriend : FC = () => {
         </Box>
         <List>
           {searchResults?.map((result) => (
-            <ListItem key={`${result.user_id}-${result.first_name}`}
+            <ListItem
+              key={`${result.user_id}-${result.first_name}`}
               secondaryAction={
-                <IconButton>
-                  <AddCircleIcon onClick={() => {
-                    handleAddFriend(result.user_id)
-                  }}/>
+                <IconButton
+                  onClick={() => {
+                    handleAddFriend(result.user_id);
+                  }}
+                >
+                  <AddCircleIcon />
                 </IconButton>
               }
             >
@@ -128,11 +131,11 @@ const SearchAddFriend : FC = () => {
             </ListItem>
           ))}
         </List>
-        {searchResults.length === 0 &&
+        {searchResults.length === 0 && (
           <Typography variant="body1">
             No results. Try entering a new search term.
           </Typography>
-        }
+        )}
       </CardContent>
     </Card>
   );

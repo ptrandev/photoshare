@@ -17,7 +17,7 @@ axios.defaults.baseURL = 'http://127.0.0.1:5000';
 axios.defaults.withCredentials = true;
 
 function App() {
-  const { token, removeToken, setToken } = useToken();
+  const { token } = useToken();
 
   useEffect(() => {
     if (token) {
@@ -28,9 +28,9 @@ function App() {
   return (
     <Routes>
       <Route path="*" element={<NotFound/>} />
-      <Route element={<MainLayout token={token} removeToken={removeToken}/>}>
+      <Route element={<MainLayout/>}>
         <Route index element={<Home />} />
-        <Route path="/auth/login" element={<Login setToken={setToken}/>} />
+        <Route path="/auth/login" element={<Login />} />
         <Route path="/auth/register" element={<Register />} />
         <Route path="/friends" element={<Friends />} />
         <Route path="/leaderboard" element={<Leaderboard />} />

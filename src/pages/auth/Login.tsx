@@ -4,13 +4,13 @@ import { useState } from 'react';
 import { Link as RouterLink, useNavigate } from 'react-router-dom';
 import { Typography, Box, Link, Stack, TextField, Button } from '@mui/material';
 import { useSnackbar } from 'notistack';
-
+import useToken from '../../hooks/useToken';
 
 import AuthCard from 'components/auth/AuthCard';
 import axios from 'axios';
 
-const Login = (props) => {
-  const { setToken } = props;
+const Login = () => {
+  const { setToken } = useToken();
 
   const { enqueueSnackbar } = useSnackbar();
   const navigate = useNavigate();
