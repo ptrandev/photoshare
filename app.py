@@ -6,6 +6,7 @@
 import base64
 import os
 import shutil
+import time
 
 # Flask Imports
 import flask
@@ -339,73 +340,66 @@ def get_img():
     return send_file(f"./imgs/{album_id}/{filename}")
 
 # UPLOAD IMAGE
-@app.route('/albums/', methods=['POST'])
-@flask_login.login_required
+@app.route('/albums/upload', methods=['POST'])
+@jwt_required()
 def upload_img():
-    conn = mysql.connect()
+    # Get id from email
+    email = get_jwt_identity()
     cursor = conn.cursor()
+    cursor.execute(f"SELECT user_id FROM Users WHERE email = '{email}'")
 
-    # Variables
-    user = flask_login.current_user
-    album_name = request.form.get('album_name')
-    form = request.form
-    files = request.files
+    # # Get ids and album name
+    user_id = cursor.fetchone()['user_id']
+    album_id = request.form['album_id']
+    file = request.files['file']
+    caption = request.form['caption']
+    tags = json.loads(request.form['tags'])
 
-    # Save album to database
+    # Check if album exists
     cursor.execute(
-        f"INSERT INTO Albums (user_id, album_name) VALUES ('{user.id}', '{album_name}');")
-    conn.commit()
-    cursor.execute(
-        f"SELECT album_id FROM Albums WHERE user_id={user.id} AND album_name='{album_name}';")
-    album_id = cursor.fetchone()[0]
+        f"SELECT album_id FROM Albums WHERE user_id={user_id} AND album_id={album_id};")
+    album_id = cursor.fetchone()['album_id']
 
+    if not album_id:
+        return jsonify({"success": False, "message": "Album does not exist."})
+    
     # Check if path exists
     path = f"./imgs/{album_id}"
     if not os.path.exists(path):
         os.makedirs(path)
+    
+    # Save image to path
+    file.save(f"{path}/{int(time.time())}-{file.filename}")
 
-    # Save images to database
-    def allowed_file(filename):
-        return '.' in filename and filename.rsplit('.', 1)[1] in ALLOWED_EXTENSIONS
+    # Save image to database
+    cursor.execute(
+        f"INSERT INTO Photos (album_id, caption, data) VALUES ('{album_id}', '{caption}', '{path}');")
+    
+    # get photo id
+    cursor.execute(
+        f'SELECT photo_id FROM Photos WHERE album_id={album_id} AND data="{path}" AND caption="{caption}";')
+    photo_id = cursor.fetchone()['photo_id']
 
-    for img in files:
-        # Add captions
-        if not allowed_file(img):
-            continue
-
-        caption = form.get("cap_" + img)
-        files.get(img).save(f"{path}/{img}")
-        cursor.execute(
-            f'INSERT INTO Photos (album_id, caption, photo_name) VALUES ({album_id}, "{caption}", "{img}");')
-        conn.commit()
-
-        # Add tags
-        if form.get("tags_" + img) is None:
-            continue
-
-        tags = form.get("tags_" + img).split(",")
-
-        for tag in tags:
-            if tag == '': continue
-            
-            # Check if tag already exists
-            exists = cursor.execute(f"SELECT * FROM Tags WHERE tag='{tag}';")
-            if not exists:
-                cursor.execute(f"INSERT INTO Tags (tag) VALUES ('{tag}');")
-                conn.commit()
-            
-            cursor.execute(f"SELECT tag_id FROM Tags WHERE tag='{tag}';")
-            tag_id = cursor.fetchone()[0]
-
-            cursor.execute(
-                f'SELECT photo_id FROM Photos WHERE album_id={album_id} AND photo_name="{img}" AND caption={caption}";')
-            photo_id = cursor.fetchone()[0]
-
-            cursor.execute(
-                f"INSERT INTO TagToPhotos (tag_id, photo_id) VALUES ({tag_id}, {photo_id});")
+    # save tags
+    for tag_name in tags:
+        # add tag if it doesn't exist
+        exists = cursor.execute(f"SELECT * FROM Tags WHERE tag_name='{tag_name}';")
+        if not exists:
+            cursor.execute(f"INSERT INTO Tags (tag_name) VALUES ('{tag_name}');")
             conn.commit()
 
-    return "Image Successfully Uploaded"
+        # get tag id
+        cursor.execute(f"SELECT tag_id FROM Tags WHERE tag_name='{tag_name}';")
+        tag_id = cursor.fetchone()['tag_id']
+
+        # add tag to photo
+        cursor.execute(
+            f"INSERT INTO Has_Tag (tag_id, photo_id) VALUES ({tag_id}, {photo_id});")
+        conn.commit()
+
+    conn.commit()
+
+    return jsonify({"success": True, "message": "Image uploaded."})
 
 # GET ALBUM/IMAGES FROM ALBUM
 @app.route('/albums/', methods=['GET'])

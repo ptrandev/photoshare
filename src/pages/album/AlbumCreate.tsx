@@ -11,11 +11,11 @@ import {
   Button,
 } from "@mui/material";
 import { useSnackbar } from 'notistack';
-import axios from '../utils/axios';
+import axios from '../../utils/axios';
 import { useNavigate } from 'react-router-dom';
 
 
-const CreateAlbum : FC = () => {
+const AlbumCreate : FC = () => {
   const { enqueueSnackbar } = useSnackbar();
   const navigate = useNavigate();
 
@@ -31,13 +31,20 @@ const CreateAlbum : FC = () => {
   }
 
   const handleSubmit = () => {
+    if (!formValue.album_name) {
+      enqueueSnackbar("Fill out album name.", {
+        variant: "error",
+      });
+      return;
+    }
+
     axios.post('/albums/create', formValue).then(res => {
       enqueueSnackbar(res.data.message, {
         variant: res.data.success ? "success" : "error",
       });
 
       if (res.data.success) {
-        navigate(`/albums/${res.data.album_id}`);
+        navigate(`/album/edit/${res.data.album_id}`);
       }
     }).catch(() => {
       enqueueSnackbar("Something went wrong.", {
@@ -89,4 +96,4 @@ const CreateAlbum : FC = () => {
   );
 }
 
-export default CreateAlbum;
+export default AlbumCreate;

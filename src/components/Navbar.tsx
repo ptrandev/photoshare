@@ -63,7 +63,7 @@ const DrawerList = () => {
     {
       label: 'Create Album',
       icon: <UploadIcon />,
-      link: '/create/album',
+      link: '/album/create',
     }
   ]
 
