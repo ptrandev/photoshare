@@ -109,7 +109,7 @@ def getUserIdFromEmail(email):
 def isEmailUnique(email):
     # use this to check if a email has already been registered
     cursor = conn.cursor()
-    if cursor.execute(f"SELECT email  FROM Users WHERE email = '{email}'"):
+    if cursor.execute(f"SELECT email FROM Users WHERE email = '{email}'"):
         # this means there are greater than zero entries with that email
         return False
     else:
@@ -197,10 +197,9 @@ def register():
             f"INSERT INTO Users (email, password, first_name, last_name, dob, hometown, gender) VALUES ('{email}', '{password}', '{first_name}', '{last_name}', '{dob}', '{hometown}', '{gender}')"))
         conn.commit()
 
-        return {"success": True}
+        return {"success": True, "message": "Registration succeeded. You can login now."}
     else:
-        print("couldn't find all tokens")
-        return {"success": False}
+        return {"success": False, "message": "Email already registered. Try again with a different email."}
 
 
 # ------------------ #
