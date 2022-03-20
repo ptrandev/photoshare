@@ -13,9 +13,18 @@ import {
   ListItemIcon,
   Avatar,
   ListItemText,
+  IconButton,
 } from "@mui/material";
 import { useSnackbar } from 'notistack';
-import axios from 'axios';
+import axios from '../../utils/axios';
+import AddCircleIcon from '@mui/icons-material/AddCircle';
+
+interface SearchResults {
+  user_id: number;
+  first_name: string;
+  last_name: string;
+  email: string;
+}
 
 const SearchAddFriend : FC = () => {
   const { enqueueSnackbar } = useSnackbar();
@@ -24,6 +33,8 @@ const SearchAddFriend : FC = () => {
     firstName: '',
     lastName: '',
   })
+
+  const [searchResults, setSearchResults] = useState<SearchResults[]>([]);
 
   const handleChange = (e : ChangeEvent<HTMLInputElement>) => {
     setFormValue({
@@ -40,7 +51,23 @@ const SearchAddFriend : FC = () => {
     }
 
     axios.get(`/friends/search?firstName=${formValue.firstName}&lastName=${formValue.lastName}`).then(res => {
-      console.log(res)
+      setSearchResults(res.data);
+    })
+  }
+
+  const handleAddFriend = (userId : number) => {
+    axios.post(`/friends/add`, {
+      friend_id: userId,
+    }).then(res => {
+      enqueueSnackbar(res.data.message, {
+        variant: res.data.success ? "success" : "error",
+      });
+
+      if (res.data.success) window.location.reload()
+    }).catch(() => {
+      enqueueSnackbar("An error occurred", {
+        variant: "error",
+      });
     })
   }
 
@@ -80,13 +107,35 @@ const SearchAddFriend : FC = () => {
           </Button>
         </Box>
         <List>
-          <ListItem>
-            <ListItemIcon>
-              <Avatar>H</Avatar>
-            </ListItemIcon>
-            <ListItemText primary="John Doe" />
-          </ListItem>
+          {searchResults?.map((result) => (
+            <ListItem
+              key={`${result.user_id}-${result.first_name}`}
+              secondaryAction={
+                <IconButton
+                  onClick={() => {
+                    handleAddFriend(result.user_id);
+                  }}
+                >
+                  <AddCircleIcon />
+                </IconButton>
+              }
+            >
+              <ListItemIcon>
+                <Avatar>
+                  {result.first_name[0]} {result.last_name[0]}
+                </Avatar>
+              </ListItemIcon>
+              <ListItemText
+                primary={`${result.first_name} ${result.last_name} (${result.email})`}
+              />
+            </ListItem>
+          ))}
         </List>
+        {searchResults.length === 0 && (
+          <Typography variant="body1">
+            No results. Try entering a new search term.
+          </Typography>
+        )}
       </CardContent>
     </Card>
   );

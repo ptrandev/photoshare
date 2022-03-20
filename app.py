@@ -10,6 +10,7 @@ import os
 import flask
 from flask import Flask, Response, request, render_template, redirect, url_for, jsonify, send_file
 from flaskext.mysql import MySQL
+from pymysql.cursors import DictCursor
 import flask_login
 from flask_cors import CORS, cross_origin
 from flask_jwt_extended import create_access_token, get_jwt, get_jwt_identity, unset_jwt_cookies, jwt_required, JWTManager
@@ -26,9 +27,10 @@ load_dotenv()
 # ----------------- #
 
 # CORS SETTINGS
-mysql = MySQL()
+mysql = MySQL(cursorclass=DictCursor)
 app = Flask(__name__)
-CORS(app, supports_credentials=True, origin="http://127.0.0.1:3000")
+
+cors = CORS(app, supports_credentials = True, resources={r"/*": {"origins": "*"}})
 
 app.secret_key = 'DeltaEchoEchoZuluNovemberUniformTangoSierra'  # A little throwback
 
@@ -44,7 +46,7 @@ ALLOWED_EXTENSIONS = set(['png', 'jpg', 'jpeg', 'gif'])
 # ACCESS TOKEN
 app.config["JWT_SECRET_KEY"] = "DeltaEchoEchoZuluNovemberUniformTangoSierra"
 jwt = JWTManager(app)
-app.config["JWT_ACCESS_TOKEN_EXPIRES"] = timedelta(hours=1)
+app.config["JWT_ACCESS_TOKEN_EXPIRES"] = False
 
 # LOGIN SETTINGS
 login_manager = flask_login.LoginManager()
@@ -136,8 +138,8 @@ def create_token():
     password = request.json.get("password", None)
 
     if cursor.execute(f"SELECT password FROM Users WHERE email = '{email}'"):
-        data = cursor.fetchall()
-        pwd = str(data[0][0])
+        data = cursor.fetchone()
+        pwd = str(data['password'])
         if password == pwd:
             access_token = create_access_token(identity=email)
             response = {"access_token": access_token}
@@ -205,18 +207,29 @@ def register():
 # - FRIENDS ROUTER - #
 # ------------------ #
 
-# ADD/REMOVE FRIENDS
-@app.route('/friends/edit', methods=['POST'])
-@flask_login.login_required
+# ADD FRIEND
+@app.route('/friends/add', methods=['POST'])
+@jwt_required()
 def add_friend():
     # Get id from email
-    email = flask_login.current_user.id
+    email = get_jwt_identity()
     cursor = conn.cursor()
     cursor.execute(f"SELECT user_id FROM Users WHERE email = '{email}'")
 
     # Get ids of current user and friend
-    user_id = cursor.fetchone()[0]
+    user_id = cursor.fetchone()['user_id']
     friend_id = request.json['friend_id']
+
+    # This is to prevent users from adding themselves as friends.
+    if (user_id == friend_id):
+        return json.dumps({'success': False, 'message': 'You cannot add yourself as a friend.'})
+
+    # Check if friend is already in friend list
+    cursor.execute(f"SELECT * FROM Friends WHERE friend_a = '{user_id}' AND friend_b = '{friend_id}'")
+
+    # If friend is already in friend list, return error
+    if cursor.fetchone():
+        return json.dumps({'success': False, 'message': 'Friend already in friend list.'})
 
     # Add friend to current user
     cursor = conn.cursor()
@@ -225,16 +238,19 @@ def add_friend():
     cursor.execute(
         f"INSERT INTO Friends (friend_a, friend_b) VALUES ('{friend_id}', '{user_id}')")
 
-    return "Friend Added"
+    return jsonify({"success": True, "message": "Friend added."})
 
+# REMOVE FRIEND
+@app.route('/friends/remove', methods=['POST'])
+@jwt_required()
 def remove_friend():
     # Get id from email
-    email = flask_login.current_user.id
+    email = get_jwt_identity()
     cursor = conn.cursor()
     cursor.execute(f"SELECT user_id FROM Users WHERE email = '{email}'")
 
     # Get ids of current user and friend
-    user_id = cursor.fetchone()[0]
+    user_id = cursor.fetchone()['user_id']
     friend_id = request.json['friend_id']
 
     # Remove friend from current user
@@ -244,49 +260,39 @@ def remove_friend():
     cursor.execute(
         f"DELETE FROM Friends WHERE friend_a = '{friend_id}' AND friend_b = '{user_id}'")
 
-    return "Friend Removed"
+    return {"success": True, "message": "Friend removed."}
 
-# SEARCH FOR FRIEND
+# SEARCH FOR FRIENDS
 @app.route('/friends/search', methods=['GET'])
 def search_friends():
     # Get query
     query = [request.args.get('firstName'), request.args.get('lastName')]
     cursor = conn.cursor()
 
-    # Check if query contains 'first' or 'first last'
-    if len(query) == 2:
-        cursor.execute(
-            f"SELECT user_id FROM Users WHERE first_name LIKE '{query[0]}%' AND last_name LIKE '{query[1]}%'")
-        query = [x[0] for x in cursor.fetchall()]
-        return jsonify(query)
-    else:
-        cursor.execute(
-            f"SELECT user_id FROM Users WHERE first_name LIKE '{query[0]}%'")
-        query = [x[0] for x in cursor.fetchall()]
-        return jsonify(query)
+    cursor.execute(
+            f"SELECT user_id, first_name, last_name, email FROM Users WHERE first_name LIKE '{query[0]}%' AND last_name LIKE '{query[1]}%'")
+    query = cursor.fetchall()
+    return jsonify(query)
 
-# LIST USER FRIENDS
+# LIST USER'S FRIENDS
 @app.route('/friends/list', methods=['GET'])
-@flask_login.login_required
+@jwt_required()
 def list_friends():
     # Get id from email
-    email = flask_login.current_user.id
+    email = get_jwt_identity()
     cursor = conn.cursor()
     cursor.execute(f"SELECT user_id FROM Users WHERE email = '{email}'")
 
     # Get ids of current user and friend
-    user_id = cursor.fetchone()[0]
+    user_id = cursor.fetchone()['user_id']
 
     # Get friends
     cursor = conn.cursor()
     cursor.execute(
-        f"SELECT F.friend_b, U.first_name, U.last_name FROM Friends F JOIN Users U ON U.user_id = F.friend_b WHERE friend_a = '{user_id}'")
-    friends = [{
-        "friend_id": x[0],
-        "friend_name": x[1] + " " + x[2]
-    } for x in cursor.fetchall()]
+        f"SELECT U.user_id, U.first_name, U.last_name, U.email FROM Friends F JOIN Users U ON U.user_id = F.friend_b WHERE friend_a = '{user_id}'")
+    query = cursor.fetchall()
 
-    return jsonify(friends)
+    return jsonify(query)
 
 
 # ---------------- #
