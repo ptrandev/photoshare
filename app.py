@@ -428,11 +428,6 @@ def get_album_img(album_id):
 # - MAIN ROUTER - #
 # --------------- #
 
-@app.route('/whoami', methods=['GET'])
-@flask_login.login_required
-def whoami():
-    return flask_login.current_user.id
-
 # ROOT
 @app.route("/", methods=['GET'])
 def slash(): return "Server is running..."
