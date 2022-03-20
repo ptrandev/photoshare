@@ -1,4 +1,6 @@
+import { useEffect } from 'react';
 import { Routes, Route } from "react-router-dom";
+import axios from 'axios';
 
 import useToken from './hooks/useToken';
 
@@ -11,8 +13,17 @@ import Leaderboard from "./pages/Leaderboard";
 
 import MainLayout from './components/MainLayout';
 
+axios.defaults.baseURL = 'http://127.0.0.1:5000';
+axios.defaults.withCredentials = true;
+
 function App() {
   const { token, removeToken, setToken } = useToken();
+
+  useEffect(() => {
+    if (token) {
+      axios.defaults.headers.common = { Authorization: `Bearer ${token}` };
+    }
+  }, [token])
 
   return (
     <Routes>

@@ -3,26 +3,25 @@ import ReactDOM from 'react-dom';
 import { BrowserRouter } from 'react-router-dom';
 import LocalizationProvider from '@mui/lab/LocalizationProvider';
 import AdapterDateFns from '@mui/lab/AdapterDateFns';
-import axios from 'axios';
 import { SnackbarProvider } from 'notistack';
+import { TokenProvider } from 'contexts/TokenContext';
 
 import App from './App';
 import reportWebVitals from './reportWebVitals';
 
 import 'normalize.css';
 
-axios.defaults.baseURL = 'http://127.0.0.1:5000';
-axios.defaults.withCredentials = true;
-
 ReactDOM.render(
   <React.StrictMode>
-    <BrowserRouter>
-      <LocalizationProvider dateAdapter={AdapterDateFns}>
-        <SnackbarProvider maxSnack={3}>
-          <App />
-        </SnackbarProvider>
-      </LocalizationProvider>
-    </BrowserRouter>
+    <TokenProvider>
+      <BrowserRouter>
+        <LocalizationProvider dateAdapter={AdapterDateFns}>
+          <SnackbarProvider maxSnack={3}>
+            <App />
+          </SnackbarProvider>
+        </LocalizationProvider>
+      </BrowserRouter>
+    </TokenProvider>
   </React.StrictMode>,
   document.getElementById("root")
 );

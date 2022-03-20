@@ -10,7 +10,7 @@ import {
   ListItemIcon,
 } from "@mui/material";
 
-import { SearchAddFriend } from "components/friends";
+import { FriendsList, SearchAddFriend } from "components/friends";
 
 const Friends = () => {
   return (
@@ -22,19 +22,7 @@ const Friends = () => {
         <SearchAddFriend />
       </Grid>
       <Grid item xs={12} md={6}>
-        <Card>
-          <CardContent>
-            <Typography variant="h5">Your Friends List</Typography>
-            <List>
-              <ListItem>
-                <ListItemIcon>
-                  <Avatar>H</Avatar>
-                </ListItemIcon>
-                <ListItemText primary="John Doe" />
-              </ListItem>
-            </List>
-          </CardContent>
-        </Card>
+        <FriendsList />
       </Grid>
     </Grid>
   );
