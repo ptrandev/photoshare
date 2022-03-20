@@ -282,7 +282,7 @@ def list_friends():
     cursor = conn.cursor()
     cursor.execute(f"SELECT user_id FROM Users WHERE email = '{email}'")
 
-    # Get ids of current user and friend
+    # Get ids of current user
     user_id = cursor.fetchone()['user_id']
 
     # Get friends
@@ -297,6 +297,38 @@ def list_friends():
 # ---------------- #
 # - ALBUM ROUTER - #
 # ---------------- #
+
+# CREATE ALBUM
+@app.route('/albums/create', methods=['POST'])
+@jwt_required()
+def create_album():
+    # Get id from email
+    email = get_jwt_identity()
+    cursor = conn.cursor()
+    cursor.execute(f"SELECT user_id FROM Users WHERE email = '{email}'")
+
+    # Get ids and album name
+    user_id = cursor.fetchone()['user_id']
+    album_name = request.json['album_name']
+
+    # check if album already exists
+    cursor.execute(
+        f"SELECT album_id FROM Albums WHERE user_id={user_id} AND album_name='{album_name}';")
+    album_id = cursor.fetchone()
+
+    if album_id:
+        return jsonify({"success": False, "message": "Album with that name already exists."})
+
+    # Save album to database
+    cursor.execute(
+        f"INSERT INTO Albums (user_id, album_name) VALUES ('{user_id}', '{album_name}');")
+    conn.commit()
+    
+    cursor.execute(
+        f"SELECT album_id FROM Albums WHERE user_id={user_id} AND album_name='{album_name}';")
+    album_id = cursor.fetchone()['album_id']
+
+    return jsonify({"success": True, "message": "Album created.", "album_id": album_id})
 
 # GET IMAGE
 @app.route('/albums/imgs', methods=['GET'])

@@ -24,6 +24,7 @@ import StyleIcon from '@mui/icons-material/Style';
 import SearchIcon from '@mui/icons-material/Search';
 import RecommendIcon from '@mui/icons-material/Recommend';
 import HomeIcon from '@mui/icons-material/Home';
+import UploadIcon from '@mui/icons-material/Upload';
 
 const drawerWidth = 240;
 
@@ -59,6 +60,11 @@ const DrawerList = () => {
       icon: <RecommendIcon/>,
       link: '/recommended',
     },
+    {
+      label: 'Create Album',
+      icon: <UploadIcon />,
+      link: '/create/album',
+    }
   ]
 
   return (

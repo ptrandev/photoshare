@@ -6,9 +6,9 @@ import Register from './pages/auth/Register';
 import NotFound from "./pages/NotFound";
 import Friends from "./pages/Friends";
 import Leaderboard from "./pages/Leaderboard";
+import CreateAlbum from "./pages/CreateAlbum";
 
 import MainLayout from './components/MainLayout';
-
 
 function App() {
   return (
@@ -20,6 +20,7 @@ function App() {
         <Route path="/auth/register" element={<Register />} />
         <Route path="/friends" element={<Friends />} />
         <Route path="/leaderboard" element={<Leaderboard />} />
+        <Route path="/create/album" element={<CreateAlbum />} />
       </Route>
     </Routes>
   );
