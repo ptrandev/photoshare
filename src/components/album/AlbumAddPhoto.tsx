@@ -1,5 +1,5 @@
 import type { FC, ChangeEvent } from 'react';
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 import {
   Typography,
   Card,
@@ -66,6 +66,8 @@ const AlbumAddPhoto : FC = () => {
         enqueueSnackbar(res.data.message, {
           variant: res.data.success ? "success" : "error",
         })
+
+        if (res.data.success) window.location.reload();
       })
       .catch(() => {
         enqueueSnackbar("Something went wrong.", {

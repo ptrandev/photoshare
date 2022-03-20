@@ -27,7 +27,7 @@ CREATE TABLE Albums (
   album_name VARCHAR(255) NOT NULL,
   created DATETIME,
   CONSTRAINT album_pk PRIMARY KEY (album_id),
-  FOREIGN KEY (user_id) REFERENCES Users(user_id)  
+  FOREIGN KEY (user_id) REFERENCES Users(user_id)
 );
 
 CREATE TABLE Photos (
@@ -48,7 +48,7 @@ CREATE TABLE Comments (
   date DATETIME,
   CONSTRAINT comment_pk PRIMARY KEY (comment_id),
   FOREIGN KEY (user_id) REFERENCES Users(user_id),
-  FOREIGN KEY (photo_id) REFERENCES Photos(photo_id)
+  FOREIGN KEY (photo_id) REFERENCES Photos(photo_id) ON DELETE CASCADE
 );
 
 CREATE TABLE Tags (
@@ -61,7 +61,7 @@ CREATE TABLE Has_Tag (
   tag_id int4,
   photo_id int4,
   CONSTRAINT tag_id FOREIGN KEY (tag_id) REFERENCES Tags(tag_id),
-  CONSTRAINT photo_id FOREIGN KEY (photo_id) REFERENCES Photos(photo_id)
+  CONSTRAINT photo_id FOREIGN KEY (photo_id) REFERENCES Photos(photo_id) ON DELETE CASCADE
 );
 
 INSERT INTO Users (email, password, first_name, last_name, dob, hometown, gender) VALUES ('dcmag@bu.edu', 'dcmag', 'Dominic', 'Maglione', '2001-12-18', 'Waterford', 'Male');

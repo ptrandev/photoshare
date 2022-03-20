@@ -337,7 +337,7 @@ def create_album():
 def get_img():
     album_id = request.args.get('album_id')
     filename = request.args.get('filename')
-    return send_file(f"./imgs/{album_id}/{filename}")
+    return send_file(f"./public/imgs/{album_id}/{filename}")
 
 # UPLOAD IMAGE
 @app.route('/albums/upload', methods=['POST'])
@@ -364,20 +364,21 @@ def upload_img():
         return jsonify({"success": False, "message": "Album does not exist."})
     
     # Check if path exists
-    path = f"./imgs/{album_id}"
+    path = f"./public/imgs/{album_id}"
     if not os.path.exists(path):
         os.makedirs(path)
     
     # Save image to path
-    file.save(f"{path}/{int(time.time())}-{file.filename}")
+    save_path = f"{path}/{int(time.time())}-{file.filename}"
+    file.save(save_path)
 
     # Save image to database
     cursor.execute(
-        f"INSERT INTO Photos (album_id, caption, data) VALUES ('{album_id}', '{caption}', '{path}');")
+        f"INSERT INTO Photos (album_id, caption, data) VALUES ('{album_id}', '{caption}', '{save_path}');")
     
     # get photo id
     cursor.execute(
-        f'SELECT photo_id FROM Photos WHERE album_id={album_id} AND data="{path}" AND caption="{caption}";')
+        f'SELECT photo_id FROM Photos WHERE album_id={album_id} AND data="{save_path}" AND caption="{caption}";')
     photo_id = cursor.fetchone()['photo_id']
 
     # save tags
@@ -402,9 +403,8 @@ def upload_img():
     return jsonify({"success": True, "message": "Image uploaded."})
 
 # GET ALBUM/IMAGES FROM ALBUM
-@app.route('/albums/', methods=['GET'])
+@app.route('/albums', methods=['GET'])
 def get_album():
-    conn = mysql.connect()
     cursor = conn.cursor()
 
     # Variables
@@ -417,71 +417,111 @@ def get_album():
     # Data
     album = {
         "album_id": album_id,
-        "album_name": result[0],
-        "user_id": result[1],
-        "user_name": f"{result[2]} {result[3]}",
-        "images": get_album_img(album_id)
+        "album_name": result['album_name'],
+        "user_id": result['user_id'],
+        "first_name": result['first_name'],
+        "last_name": result['last_name'],
+        "images": get_album_img(album_id),
     }
 
     return jsonify(album)
 
 def get_album_img(album_id):
-    conn = mysql.connect()
     cursor = conn.cursor()
 
     cursor.execute(
-        f"SELECT photo_id, caption, photo_location FROM Photos WHERE album_id={album_id}")
+        f"SELECT photo_id, caption, data FROM Photos WHERE album_id={album_id}")
     result = cursor.fetchall()
 
     imgs = []
     for img in result:
-        obj = {"photo_id": img[0], "caption": img[1], "filename": img[2]}
+        obj = img
 
         # Get Likes
-        cursor.execute(
-            f"SELECT first_name, last_name FROM Likes l JOIN Users u ON l.user_id=u.user_id where l.photo_id={img[0]};")
-        likes = [f"{a[0]} {a[1]}" for a in cursor.fetchall()]
-        obj["likes"] = likes
-        obj["num_likes"] = len(likes)
+        # cursor.execute(
+        #     f"SELECT first_name, last_name FROM Likes l JOIN Users u ON l.user_id=u.user_id where l.photo_id={img['photo_id']};")
+        # likes = [f"{a[0]} {a[1]}" for a in cursor.fetchall()]
+        # obj["likes"] = likes
+        # obj["num_likes"] = len(likes)
 
         # Get Comments
         cursor.execute(
-            f"SELECT first_name, last_name, text FROM Comments c JOIN Users u ON c.user_id=u.user_id where c.photo_id={img[0]};")
-        comments = [{"user": f"{a[0]} {a[1]}", "text": a[2]}
-                    for a in cursor.fetchall()]
+            f"SELECT first_name, last_name, text FROM Comments c JOIN Users u ON c.user_id=u.user_id where c.photo_id={img['photo_id']};")
+        comments = cursor.fetchall()
         obj["comments"] = comments
         obj["num_comments"] = len(comments)
+
+        # Get Tags
+        cursor.execute(
+            f"SELECT t.tag_id, t.tag_name FROM Has_Tag ht JOIN Photos p JOIN Tags t ON t.tag_id=ht.tag_id AND p.photo_id=ht.photo_id where p.photo_id={img['photo_id']};")
+        tags = cursor.fetchall()
+        obj["tags"] = tags
 
         imgs.append(obj)
 
     return imgs
 
+# DELETE IMAGE
+@app.route('/albums/photo/delete', methods=['POST'])
+@jwt_required()
+def delete_img():
+    # Get id from email
+    email = get_jwt_identity()
+    cursor = conn.cursor()
+    cursor.execute(f"SELECT user_id FROM Users WHERE email = '{email}'")
+
+    # Get user id and photo id
+    user_id = cursor.fetchone()['user_id']
+    photo_id = request.json['photo_id']
+
+    # check if photo exists and belongs to user
+    cursor.execute(
+        f"SELECT * FROM Photos p JOIN Albums a WHERE p.photo_id={photo_id} AND a.user_id={user_id};")
+    result = cursor.fetchone()
+
+    if not result:
+        return jsonify({"success": False, "message": "Photo does not exist or the user does not own the image."})
+
+    # Delete photo
+    cursor.execute(f"DELETE FROM Photos WHERE photo_id={photo_id};")
+    conn.commit()
+
+    return jsonify({"success": True, "message": "Photo deleted."})
+
 # DELETE ALBUM
 @app.route('/albums/delete', methods=['POST'])
-@flask_login.login_required
+@jwt_required()
 def delete_album():
-    conn = mysql.connect()
+    # Get id from email
+    email = get_jwt_identity()
     cursor = conn.cursor()
-    
-    user = flask_login.current_user
+    cursor.execute(f"SELECT user_id FROM Users WHERE email = '{email}'")
+
+    # get user id and album id
+    user_id = cursor.fetchone()['user_id']
     album_id = request.json["album_id"]
     
-    cursor.execute(f"SELECT user_id FROM Albums WHERE album_id={album_id};")
-    owner = cursor.fetchone()[0]
+    # check if user owns album
+    cursor.execute(f"SELECT * FROM Albums WHERE album_id={album_id} AND user_id={user_id};")
+    album = cursor.fetchone()
     
-    if owner == user.id:
-        cursor.execute(f"DELETE FROM Albums WHERE album_id={album_id};")
-        conn.commit()
-        
-        shutil.rmtree(f"./imgs/{album_id}")
-        
-    return "Image Successfully Deleted"
+    if not album:
+        return jsonify({"success": False, "message": "User does not own the album."})
+
+    cursor.execute(f"DELETE FROM Albums WHERE album_id={album_id};")
+    conn.commit()
+    
+    # Check if path exists and delete it
+    path = f"./public/imgs/{album_id}"
+    if os.path.exists(path):
+        shutil.rmtree(f"./public/imgs/{album_id}")
+
+    return jsonify({"success": True, "message": "Album deleted."})
 
 # VIEW USER ALBUMS
 @app.route('/albums/user/', methods=['GET'])
 @flask_login.login_required
 def get_user_album():
-    conn = mysql.connect()
     cursor = conn.cursor()
     
     user = flask_login.current_user
@@ -503,7 +543,6 @@ def get_user_album():
 @app.route('/albums/like', methods=['POST'])
 @flask_login.login_required
 def like_img():
-    conn = mysql.connect()
     cursor = conn.cursor()
     
     user = flask_login.current_user
@@ -524,7 +563,6 @@ def like_img():
 @app.route('/albums/comment', methods=['POST'])
 @flask_login.login_required
 def comment_img():
-    conn = mysql.connect()
     cursor = conn.cursor()
     
     user = flask_login.current_user
@@ -539,7 +577,6 @@ def comment_img():
 # GET GENERAL FEED
 @app.route('/albums/general-feed', methods=['GET'])
 def get_general_feed():
-    conn = mysql.connect()
     cursor = conn.cursor()
     
     cursor.execute(f"SELECT a.album_id, a.album_name, u.user_id, u.first_name, u.last_name FROM Albums a JOIN Users u ON a.user_id=u.user_id ORDER BY created DESC LIMIT 10;")
