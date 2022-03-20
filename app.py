@@ -5,6 +5,7 @@
 # Base Imports
 import base64
 import os
+import shutil
 
 # Flask Imports
 import flask
@@ -32,7 +33,7 @@ app = Flask(__name__)
 
 cors = CORS(app, supports_credentials = True, resources={r"/*": {"origins": "*"}})
 
-app.secret_key = 'DeltaEchoEchoZuluNovemberUniformTangoSierra'  # A little throwback
+app.secret_key = 'DeltaEchoEchoZuluNovemberUniformTangoSierra'
 
 # SQL CONFIGURATION
 app.config['MYSQL_DATABASE_USER'] = 'root'
@@ -375,7 +376,7 @@ def upload_img():
         caption = form.get("cap_" + img)
         files.get(img).save(f"{path}/{img}")
         cursor.execute(
-            f'INSERT INTO Photos (album_id, caption, photo_path) VALUES ({album_id}, "{caption}", "{img}");')
+            f'INSERT INTO Photos (album_id, caption, photo_name) VALUES ({album_id}, "{caption}", "{img}");')
         conn.commit()
 
         # Add tags
@@ -385,11 +386,19 @@ def upload_img():
         tags = form.get("tags_" + img).split(",")
 
         for tag in tags:
+            if tag == '': continue
+            
+            # Check if tag already exists
+            exists = cursor.execute(f"SELECT * FROM Tags WHERE tag='{tag}';")
+            if not exists:
+                cursor.execute(f"INSERT INTO Tags (tag) VALUES ('{tag}');")
+                conn.commit()
+            
             cursor.execute(f"SELECT tag_id FROM Tags WHERE tag='{tag}';")
             tag_id = cursor.fetchone()[0]
 
             cursor.execute(
-                f'SELECT photo_id FROM Photos WHERE album_id={album_id} AND photo_path="{img}" AND caption={caption}";')
+                f'SELECT photo_id FROM Photos WHERE album_id={album_id} AND photo_name="{img}" AND caption={caption}";')
             photo_id = cursor.fetchone()[0]
 
             cursor.execute(
@@ -422,7 +431,6 @@ def get_album():
 
     return jsonify(album)
 
-
 def get_album_img(album_id):
     conn = mysql.connect()
     cursor = conn.cursor()
@@ -454,6 +462,110 @@ def get_album_img(album_id):
 
     return imgs
 
+# DELETE ALBUM
+@app.route('/albums/delete', methods=['POST'])
+@flask_login.login_required
+def delete_album():
+    conn = mysql.connect()
+    cursor = conn.cursor()
+    
+    user = flask_login.current_user
+    album_id = request.json["album_id"]
+    
+    cursor.execute(f"SELECT user_id FROM Albums WHERE album_id={album_id};")
+    owner = cursor.fetchone()[0]
+    
+    if owner == user.id:
+        cursor.execute(f"DELETE FROM Albums WHERE album_id={album_id};")
+        conn.commit()
+        
+        shutil.rmtree(f"./imgs/{album_id}")
+        
+    return "Image Successfully Deleted"
+
+# VIEW USER ALBUMS
+@app.route('/albums/user/', methods=['GET'])
+@flask_login.login_required
+def get_user_album():
+    conn = mysql.connect()
+    cursor = conn.cursor()
+    
+    user = flask_login.current_user
+    
+    cursor.execute(f"SELECT album_id, album_name, user_id FROM Albums WHERE user_id={user.id}")
+    result = cursor.fetchall()
+    
+    albums = [{
+        "album_id": album[0],
+		"album_name": album[1],
+		"user_id": album[2],
+		"user_name": "me",
+		"images": get_album_img(album[0])
+    } for album in result]
+    
+    return jsonify(albums)
+
+# LIKE IMAGE
+@app.route('/albums/like', methods=['POST'])
+@flask_login.login_required
+def like_img():
+    conn = mysql.connect()
+    cursor = conn.cursor()
+    
+    user = flask_login.current_user
+    photo_id = request.json["photo_id"]
+    like = request.json["like"]
+    liked_already = cursor.execute(f"SELECT * FROM Likes WHERE user_id={user.id} AND photo_id={photo_id}")
+    
+    if like and not liked_already:
+        cursor.execute(f"INSERT INTO Likes (user_id, photo_id) VALUES ({user.id}, {photo_id})")
+        conn.commit()
+    elif not like and liked_already:
+        cursor.execute(f"DELETE FROM Likes WHERE user_id={user.id} AND photo_id={photo_id}")
+        conn.commit()
+        
+    return "Image Successfully Liked"
+
+# COMMENT ON IMAGE
+@app.route('/albums/comment', methods=['POST'])
+@flask_login.login_required
+def comment_img():
+    conn = mysql.connect()
+    cursor = conn.cursor()
+    
+    user = flask_login.current_user
+    photo_id = request.json["photo_id"]
+    text = request.json["text"]
+    
+    cursor.execute(f"INSERT INTO Comments (user_id, photo_id, text) VALUES ({user.id}, {photo_id}, '{text}')")
+    conn.commit()
+    
+    return "Image Successfully Commented"
+
+# GET GENERAL FEED
+@app.route('/albums/general-feed', methods=['GET'])
+def get_general_feed():
+    conn = mysql.connect()
+    cursor = conn.cursor()
+    
+    cursor.execute(f"SELECT a.album_id, a.album_name, u.user_id, u.first_name, u.last_name FROM Albums a JOIN Users u ON a.user_id=u.user_id ORDER BY created DESC LIMIT 10;")
+    result = cursor.fetchall()
+    
+    albums = [{
+		"album_id": album[0],
+		"album_name": album[1],
+		"user_id": album[2],
+		"user_name": f"{album[3]} {album[4]}",
+		"images": get_album_img(album[0])
+	} for album in result]
+    
+    return jsonify(albums)
+
+# GET FRIENDS FEED
+@app.route('/albums/friend-feed', methods=['GET'])
+@flask_login.login_required
+def get_friend_feed():
+    pass
 
 # --------------- #
 # - MAIN ROUTER - #
