@@ -37,7 +37,7 @@ mysql.init_app(app)
 
 app.config["JWT_SECRET_KEY"] = "DeltaEchoEchoZuluNovemberUniformTangoSierra"
 jwt = JWTManager(app)
-app.config["JWT_ACCESS_TOKEN_EXPIRES"] = timedelta(hours=1)
+app.config["JWT_ACCESS_TOKEN_EXPIRES"] = False
 
 # Login Code #
 login_manager = flask_login.LoginManager()
@@ -181,14 +181,6 @@ def isEmailUnique(email):
         return False
     else:
         return True
-
-
-### PROFILE ROUTER ###
-@app.route('/profile')
-@flask_login.login_required
-def protected():
-    return render_template('hello.html', name=flask_login.current_user.id, message="Here's your profile")
-
 
 ### FRIEND ROUTER ###
 # Add Friends #
