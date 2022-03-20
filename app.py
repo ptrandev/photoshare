@@ -1,11 +1,14 @@
-### IMPORTS ###
-# Base Imports #
+# ----------- #
+# - IMPORTS - #
+# ----------- #
+
+# Base Imports
 import base64
 import os
 
-# Flask Imports #
+# Flask Imports
 import flask
-from flask import Flask, Response, request, render_template, redirect, url_for, jsonify
+from flask import Flask, Response, request, render_template, redirect, url_for, jsonify, send_file
 from flaskext.mysql import MySQL
 from pymysql.cursors import DictCursor
 import flask_login
@@ -13,14 +16,17 @@ from flask_cors import CORS, cross_origin
 from flask_jwt_extended import create_access_token, get_jwt, get_jwt_identity, unset_jwt_cookies, jwt_required, JWTManager
 from datetime import datetime, timedelta, timezone
 
-# Environtment Imports #
+# ENVIRONMENT VARIABLES
 from dotenv import load_dotenv
 import json
 load_dotenv()
 
 
-### CONFIGURATION ###
-# Define APP and SQL #
+# ----------------- #
+# - CONFIGURATION - #
+# ----------------- #
+
+# CORS SETTINGS
 mysql = MySQL(cursorclass=DictCursor)
 app = Flask(__name__)
 
@@ -28,18 +34,21 @@ cors = CORS(app, supports_credentials = True, resources={r"/*": {"origins": "*"}
 
 app.secret_key = 'DeltaEchoEchoZuluNovemberUniformTangoSierra'  # A little throwback
 
-# SQL Configuration #
+# SQL CONFIGURATION
 app.config['MYSQL_DATABASE_USER'] = 'root'
 app.config['MYSQL_DATABASE_PASSWORD'] = os.getenv('password')
 app.config['MYSQL_DATABASE_DB'] = 'photoshare'
 app.config['MYSQL_DATABASE_HOST'] = 'localhost'
 mysql.init_app(app)
 
+ALLOWED_EXTENSIONS = set(['png', 'jpg', 'jpeg', 'gif'])
+
+# ACCESS TOKEN
 app.config["JWT_SECRET_KEY"] = "DeltaEchoEchoZuluNovemberUniformTangoSierra"
 jwt = JWTManager(app)
 app.config["JWT_ACCESS_TOKEN_EXPIRES"] = False
 
-# Login Code #
+# LOGIN SETTINGS
 login_manager = flask_login.LoginManager()
 login_manager.init_app(app)
 conn = mysql.connect()
@@ -47,11 +56,13 @@ cursor = conn.cursor()
 cursor.execute("SELECT email from Users")
 users = cursor.fetchall()
 
-# Login Manager
+# ----------------- #
+# - LOGIN MANAGER - #
+# ----------------- #
+
 class User(flask_login.UserMixin):
     pass
 
-# Managers #
 @login_manager.user_loader
 def user_loader(email):
     users = getUserList()
@@ -60,7 +71,6 @@ def user_loader(email):
     user = User()
     user.id = email
     return user
-
 
 @login_manager.request_loader
 def request_loader(request):
@@ -78,7 +88,50 @@ def request_loader(request):
     user.is_authenticated = request.form['password'] == pwd
     return user
 
-### AUTHENTICATION ###
+def getUserList():
+    cursor = conn.cursor()
+    cursor.execute("SELECT email from Users")
+    return cursor.fetchall()
+
+def getUsersPhotos(uid):
+    cursor = conn.cursor()
+    cursor.execute(
+        f"SELECT imgdata, picture_id, caption FROM Pictures WHERE user_id = '{uid}'")
+    # NOTE return a list of tuples, [(imgdata, pid, caption), ...]
+    return cursor.fetchall()
+
+def getUserIdFromEmail(email):
+    cursor = conn.cursor()
+    cursor.execute(
+        f"SELECT user_id  FROM Users WHERE email = '{email}'")
+    return cursor.fetchone()[0]
+
+def isEmailUnique(email):
+    # use this to check if a email has already been registered
+    cursor = conn.cursor()
+    if cursor.execute(f"SELECT email  FROM Users WHERE email = '{email}'"):
+        # this means there are greater than zero entries with that email
+        return False
+    else:
+        return True
+
+
+# ------------------ #
+# - PROFILE ROUTER - #
+# ------------------ #
+
+# DISPLAY USER PROFILE
+@app.route('/profile')
+@flask_login.login_required
+def protected():
+    return render_template('hello.html', name=flask_login.current_user.id, message="Here's your profile")
+
+
+# ---------------- #
+# - LOGIN ROUTER - #
+# ---------------- #
+
+# LOGIN TO USER
 @app.route('/token', methods=["POST"])
 def create_token():
     email = request.json.get("email", None)
@@ -94,14 +147,14 @@ def create_token():
 
     return {"msg": "Wrong email or password"}, 401
 
-
+# LOGOUT OF USER
 @app.route("/logout", methods=["POST"])
 def logout():
     response = jsonify({"msg": "logout successful"})
     unset_jwt_cookies(response)
     return response
 
-
+# JWT TOKEN VALIDATION
 @app.after_request
 def refresh_expiring_jwts(response):
     try:
@@ -119,7 +172,7 @@ def refresh_expiring_jwts(response):
         # Case where there is not a valid JWT. Just return the original respone
         return response
 
-
+# REGISTER NEW USER
 @app.route("/register", methods=['POST'])
 def register():
     # Required information
@@ -150,42 +203,13 @@ def register():
         return {"success": False}
 
 
-### USER ROUTER ###
-# Accessor Methods #
-def getUserList():
-    cursor = conn.cursor()
-    cursor.execute("SELECT email from Users")
-    return cursor.fetchall()
+# ------------------ #
+# - FRIENDS ROUTER - #
+# ------------------ #
 
-
-def getUsersPhotos(uid):
-    cursor = conn.cursor()
-    cursor.execute(
-        f"SELECT imgdata, picture_id, caption FROM Pictures WHERE user_id = '{uid}'")
-    # NOTE return a list of tuples, [(imgdata, pid, caption), ...]
-    return cursor.fetchall()
-
-
-def getUserIdFromEmail(email):
-    cursor = conn.cursor()
-    cursor.execute(
-        f"SELECT user_id  FROM Users WHERE email = '{email}'")
-    return cursor.fetchone()[0]
-
-# Check Email Uniqueness #
-def isEmailUnique(email):
-    # use this to check if a email has already been registered
-    cursor = conn.cursor()
-    if cursor.execute(f"SELECT email  FROM Users WHERE email = '{email}'"):
-        # this means there are greater than zero entries with that email
-        return False
-    else:
-        return True
-
-### FRIEND ROUTER ###
-# Add Friends #
-@app.route('/friends/add', methods=['POST'])
-@jwt_required()
+# ADD/REMOVE FRIENDS
+@app.route('/friends/edit', methods=['POST'])
+@flask_login.login_required
 def add_friend():
     # Get id from email
     email = get_jwt_identity()
@@ -238,7 +262,7 @@ def remove_friend():
 
     return {"success": True, "message": "Friend removed."}
 
-# Search Friends #
+# SEARCH FOR FRIEND
 @app.route('/friends/search', methods=['GET'])
 def search_friends():
     # Get query
@@ -250,7 +274,7 @@ def search_friends():
     query = cursor.fetchall()
     return jsonify(query)
 
-# List Friends #
+# LIST USER FRIENDS
 @app.route('/friends/list', methods=['GET'])
 @jwt_required()
 def list_friends():
@@ -271,51 +295,148 @@ def list_friends():
     return jsonify(query)
 
 
-### ALBUM ROUTER ###
-@app.route('/albums/images', methods=['GET'])
-def get_album_image():
-    pass
+# ---------------- #
+# - ALBUM ROUTER - #
+# ---------------- #
 
-# Create an album #
-@app.route('/albums/create', methods=['POST'])
+# GET IMAGE
+@app.route('/albums/imgs', methods=['GET'])
+def get_img():
+    album_id = request.args.get('album_id')
+    filename = request.args.get('filename')
+    return send_file(f"./imgs/{album_id}/{filename}")
+
+# UPLOAD IMAGE
+@app.route('/albums/', methods=['POST'])
 @flask_login.login_required
-def create_album():
-    pass
+def upload_img():
+    conn = mysql.connect()
+    cursor = conn.cursor()
 
+    # Variables
+    user = flask_login.current_user
+    album_name = request.form.get('album_name')
+    form = request.form
+    files = request.files
 
-# begin photo uploading code
-# photos uploaded using base64 encoding so they can be directly embeded in HTML
-ALLOWED_EXTENSIONS = set(['png', 'jpg', 'jpeg', 'gif'])
+    # Save album to database
+    cursor.execute(
+        f"INSERT INTO Albums (user_id, album_name) VALUES ('{user.id}', '{album_name}');")
+    conn.commit()
+    cursor.execute(
+        f"SELECT album_id FROM Albums WHERE user_id={user.id} AND album_name='{album_name}';")
+    album_id = cursor.fetchone()[0]
 
+    # Check if path exists
+    path = f"./imgs/{album_id}"
+    if not os.path.exists(path):
+        os.makedirs(path)
 
-def allowed_file(filename):
-    return '.' in filename and filename.rsplit('.', 1)[1] in ALLOWED_EXTENSIONS
+    # Save images to database
+    def allowed_file(filename):
+        return '.' in filename and filename.rsplit('.', 1)[1] in ALLOWED_EXTENSIONS
 
+    for img in files:
+        # Add captions
+        if not allowed_file(img):
+            continue
 
-@app.route('/upload', methods=['GET', 'POST'])
-@flask_login.login_required
-def upload_file():
-    if request.method == 'POST':
-        uid = getUserIdFromEmail(flask_login.current_user.id)
-        imgfile = request.files['photo']
-        caption = request.form.get('caption')
-        photo_data = imgfile.read()
-        cursor = conn.cursor()
+        caption = form.get("cap_" + img)
+        files.get(img).save(f"{path}/{img}")
         cursor.execute(
-            '''INSERT INTO Pictures (imgdata, user_id, caption) VALUES (%s, %s, %s )''', (photo_data, uid, caption))
+            f'INSERT INTO Photos (album_id, caption, photo_path) VALUES ({album_id}, "{caption}", "{img}");')
         conn.commit()
-        return render_template('hello.html', name=flask_login.current_user.id, message='Photo uploaded!', photos=getUsersPhotos(uid), base64=base64)
-    # The method is GET so we return a  HTML form to upload the a photo.
-    else:
-        return render_template('upload.html')
+
+        # Add tags
+        if form.get("tags_" + img) is None:
+            continue
+
+        tags = form.get("tags_" + img).split(",")
+
+        for tag in tags:
+            cursor.execute(f"SELECT tag_id FROM Tags WHERE tag='{tag}';")
+            tag_id = cursor.fetchone()[0]
+
+            cursor.execute(
+                f'SELECT photo_id FROM Photos WHERE album_id={album_id} AND photo_path="{img}" AND caption={caption}";')
+            photo_id = cursor.fetchone()[0]
+
+            cursor.execute(
+                f"INSERT INTO TagToPhotos (tag_id, photo_id) VALUES ({tag_id}, {photo_id});")
+            conn.commit()
+
+    return "Image Successfully Uploaded"
+
+# GET ALBUM/IMAGES FROM ALBUM
+@app.route('/albums/', methods=['GET'])
+def get_album():
+    conn = mysql.connect()
+    cursor = conn.cursor()
+
+    # Variables
+    album_id = request.args.get('album_id')
+
+    cursor.execute(
+        f"SELECT a.album_name, u.user_id, u.first_name, u.last_name FROM Albums a JOIN Users u ON a.user_id=u.user_id WHERE a.album_id={album_id}")
+    result = cursor.fetchone()
+
+    # Data
+    album = {
+        "album_id": album_id,
+        "album_name": result[0],
+        "user_id": result[1],
+        "user_name": f"{result[2]} {result[3]}",
+        "images": get_album_img(album_id)
+    }
+
+    return jsonify(album)
 
 
-### ROOT ###
+def get_album_img(album_id):
+    conn = mysql.connect()
+    cursor = conn.cursor()
+
+    cursor.execute(
+        f"SELECT photo_id, caption, photo_location FROM Photos WHERE album_id={album_id}")
+    result = cursor.fetchall()
+
+    imgs = []
+    for img in result:
+        obj = {"photo_id": img[0], "caption": img[1], "filename": img[2]}
+
+        # Get Likes
+        cursor.execute(
+            f"SELECT first_name, last_name FROM Likes l JOIN Users u ON l.user_id=u.user_id where l.photo_id={img[0]};")
+        likes = [f"{a[0]} {a[1]}" for a in cursor.fetchall()]
+        obj["likes"] = likes
+        obj["num_likes"] = len(likes)
+
+        # Get Comments
+        cursor.execute(
+            f"SELECT first_name, last_name, text FROM Comments c JOIN Users u ON c.user_id=u.user_id where c.photo_id={img[0]};")
+        comments = [{"user": f"{a[0]} {a[1]}", "text": a[2]}
+                    for a in cursor.fetchall()]
+        obj["comments"] = comments
+        obj["num_comments"] = len(comments)
+
+        imgs.append(obj)
+
+    return imgs
+
+
+# --------------- #
+# - MAIN ROUTER - #
+# --------------- #
+
+@app.route('/whoami', methods=['GET'])
+@flask_login.login_required
+def whoami():
+    return flask_login.current_user.id
+
+# ROOT
 @app.route("/", methods=['GET'])
-def hello():
-    return render_template('hello.html', message='Welecome to Photoshare')
+def slash(): return "Server is running..."
 
-
-### DEBUGGING ###
+# DEBUGGING
 if __name__ == "__main__":
     app.run(port=5000, debug=True)
