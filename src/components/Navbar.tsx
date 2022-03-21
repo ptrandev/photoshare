@@ -25,46 +25,62 @@ import SearchIcon from '@mui/icons-material/Search';
 import RecommendIcon from '@mui/icons-material/Recommend';
 import HomeIcon from '@mui/icons-material/Home';
 import UploadIcon from '@mui/icons-material/Upload';
+import PhotoAlbumIcon from '@mui/icons-material/PhotoAlbum';
 
 const drawerWidth = 240;
 
 const DrawerList = () => {
+  const { token } = useToken();
+
   const drawerItems = [
     {
       label: 'Home',
       icon: <HomeIcon />,
       link: '/',
+      loginRequired: false,
     },
     {
-      label: 'Friends List',
-      icon: <GroupIcon/>,
-      link: '/friends',
-    },
-    {
-      label: 'Leaderboard',
-      icon: <LeaderboardIcon/>,
-      link: '/leaderboard',
-    },
-    {
-      label: 'Tags',
-      icon: <StyleIcon/>,
-      link: '/tags',
-    },
-    {
-      label: 'Photo Search',
-      icon: <SearchIcon/>,
-      link: '/search',
-    },
-    {
-      label: 'You May Also Like',
-      icon: <RecommendIcon/>,
-      link: '/recommended',
+      label: 'My Albums',
+      icon: <PhotoAlbumIcon />,
+      link: '/albums/my',
+      loginRequired: true,
     },
     {
       label: 'Create Album',
       icon: <UploadIcon />,
       link: '/album/create',
-    }
+      loginRequired: true,
+    },
+    {
+      label: 'Friends List',
+      icon: <GroupIcon/>,
+      link: '/friends',
+      loginRequired: true,
+    },
+    {
+      label: 'Leaderboard',
+      icon: <LeaderboardIcon/>,
+      link: '/leaderboard',
+      loginRequired: false,
+    },
+    {
+      label: 'Tags',
+      icon: <StyleIcon/>,
+      link: '/tags',
+      loginRequired: false,
+    },
+    {
+      label: 'Photo Search',
+      icon: <SearchIcon/>,
+      link: '/search',
+      loginRequired: false,
+    },
+    {
+      label: 'You May Also Like',
+      icon: <RecommendIcon/>,
+      link: '/recommended',
+      loginRequired: true,
+    },
   ]
 
   return (
@@ -75,6 +91,10 @@ const DrawerList = () => {
       <Divider />
       <List>
         {drawerItems.map((drawerItem) => {
+          if (!token && drawerItem.loginRequired) {
+            return null;
+          }
+
           return (
             <ListItem
               button

@@ -33,7 +33,6 @@ CREATE TABLE Albums (
 CREATE TABLE Photos (
   photo_id int4 AUTO_INCREMENT,
   album_id int4,
-  photo_name VARCHAR(255) NOT NULL,
   caption VARCHAR(255),
   data VARCHAR(255) NOT NULL,
   CONSTRAINT photo_pk PRIMARY KEY (photo_id),

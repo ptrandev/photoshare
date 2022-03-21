@@ -110,7 +110,7 @@ const AlbumAddPhoto : FC = () => {
                 handleSubmit();
               }}
             >
-              Create
+              Add Photo
             </Button>
           </Stack>
         </form>

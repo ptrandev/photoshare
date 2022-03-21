@@ -519,25 +519,28 @@ def delete_album():
     return jsonify({"success": True, "message": "Album deleted."})
 
 # VIEW USER ALBUMS
-@app.route('/albums/user/', methods=['GET'])
-@flask_login.login_required
+@app.route('/albums/user', methods=['GET'])
+@jwt_required()
 def get_user_album():
+    # Get id from email
+    email = get_jwt_identity()
     cursor = conn.cursor()
+    cursor.execute(f"SELECT user_id FROM Users WHERE email = '{email}'")
     
-    user = flask_login.current_user
+    # get user id and album id
+    user_id = cursor.fetchone()['user_id']
     
-    cursor.execute(f"SELECT album_id, album_name, user_id FROM Albums WHERE user_id={user.id}")
+    cursor.execute(f"SELECT album_id, album_name, user_id FROM Albums WHERE user_id={user_id}")
     result = cursor.fetchall()
     
     albums = [{
-        "album_id": album[0],
-		"album_name": album[1],
-		"user_id": album[2],
-		"user_name": "me",
-		"images": get_album_img(album[0])
+        "album_id": album['album_id'],
+        "album_name": album['album_name'],
+        "user_id": album['user_id'],
+        "images": get_album_img(album['album_id'])
     } for album in result]
     
-    return jsonify(albums)
+    return jsonify({"albums": albums})
 
 # LIKE IMAGE
 @app.route('/albums/like', methods=['POST'])
@@ -575,22 +578,23 @@ def comment_img():
     return "Image Successfully Commented"
 
 # GET GENERAL FEED
-@app.route('/albums/general-feed', methods=['GET'])
+@app.route('/albums/all', methods=['GET'])
 def get_general_feed():
     cursor = conn.cursor()
     
-    cursor.execute(f"SELECT a.album_id, a.album_name, u.user_id, u.first_name, u.last_name FROM Albums a JOIN Users u ON a.user_id=u.user_id ORDER BY created DESC LIMIT 10;")
+    cursor.execute(f"SELECT a.album_id, a.album_name, u.user_id, u.first_name, u.last_name FROM Albums a JOIN Users u ON a.user_id=u.user_id ORDER BY created DESC;")
     result = cursor.fetchall()
     
     albums = [{
-		"album_id": album[0],
-		"album_name": album[1],
-		"user_id": album[2],
-		"user_name": f"{album[3]} {album[4]}",
-		"images": get_album_img(album[0])
-	} for album in result]
+        "album_id": album['album_id'],
+        "album_name": album['album_name'],
+        "user_id": album['user_id'],
+        "first_name": album['first_name'],
+        "last_name": album['last_name'],
+        "images": get_album_img(album['album_id'])
+    } for album in result]
     
-    return jsonify(albums)
+    return jsonify({"albums": albums})
 
 # GET FRIENDS FEED
 @app.route('/albums/friend-feed', methods=['GET'])
