@@ -90,14 +90,19 @@ const Home : FC = () => {
                       {image.caption}
                     </Typography>
                     <Typography variant="body2">
-                      {" "}
                       By {album.first_name} {album.last_name}
                     </Typography>
-                    <Stack direction="row" spacing={2} mt={2}>
+                    <Stack direction="row" spacing={2} my={2}>
                       {image?.tags?.map((tag) => (
                         <Chip key={tag.tag_name} label={tag.tag_name} />
                       ))}
                     </Stack>
+                    <Link
+                      component={RouterLink}
+                      to={`/photo/${image.photo_id}`}
+                    >
+                      <Button variant="contained">View</Button>
+                    </Link>
                   </CardContent>
                 </Card>
               );

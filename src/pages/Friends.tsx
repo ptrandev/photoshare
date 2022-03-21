@@ -1,9 +1,10 @@
 import {
   Grid,
   Typography,
+  Stack
 } from "@mui/material";
 
-import { FriendsList, SearchAddFriend } from "components/friends";
+import { FriendsList, FriendsRecommendations, SearchAddFriend } from "components/friends";
 
 const Friends = () => {
   return (
@@ -15,7 +16,10 @@ const Friends = () => {
         <SearchAddFriend />
       </Grid>
       <Grid item xs={12} md={6}>
-        <FriendsList />
+        <Stack spacing={2}>
+          <FriendsList />
+          <FriendsRecommendations />
+        </Stack>
       </Grid>
     </Grid>
   );

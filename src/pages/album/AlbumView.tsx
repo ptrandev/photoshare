@@ -7,7 +7,10 @@ import {
   CardContent,
   Stack,
   Chip,
+  Button,
+  Link,
 } from "@mui/material";
+import { Link as RouterLink } from 'react-router-dom';
 import { useParams } from 'react-router-dom';
 import axios from '../../utils/axios';
 
@@ -55,16 +58,29 @@ const AlbumView : FC = () => {
                 alt={image.caption}
                 width="100%"
               />
-              <Typography variant="body1">{image.caption}</Typography>
-              <Stack direction="row" spacing={2} mt={2}>
+              <Typography variant="body1" mb={2}>
+                {image.caption}
+              </Typography>
+              <Stack direction="row" spacing={2} mb={2}>
                 {image?.tags?.map((tag) => (
                   <Chip key={tag.tag_name} label={tag.tag_name} />
                 ))}
               </Stack>
+              <Link
+                component={RouterLink}
+                to={`/photo/${image.photo_id}`}
+              >
+                <Button variant="contained">View</Button>
+              </Link>
             </CardContent>
           </Card>
         </Grid>
       ))}
+      <Grid item xs={12}>
+        {album?.images.length === 0 && (
+          <Typography variant="body1">No images in this album</Typography>
+        )}
+      </Grid>
     </Grid>
   );
 }
