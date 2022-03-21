@@ -323,7 +323,7 @@ def create_album():
 
     # Save album to database
     cursor.execute(
-        f"INSERT INTO Albums (user_id, album_name) VALUES ('{user_id}', '{album_name}');")
+        f"INSERT INTO Albums (user_id, album_name, created) VALUES ('{user_id}', '{album_name}', '{datetime.now()}');")
     conn.commit()
     
     cursor.execute(
@@ -356,7 +356,7 @@ def get_img():
 
     # get comments
     cursor.execute(
-        f"SELECT first_name, last_name, text FROM Comments c JOIN Users u ON c.user_id=u.user_id WHERE c.photo_id={img['photo_id']};")
+        f"SELECT first_name, last_name, text FROM Comments c JOIN Users u ON c.user_id=u.user_id WHERE c.photo_id={img['photo_id']} ORDER BY date DESC;")
     comments = cursor.fetchall()
     obj["comments"] = comments
     obj["num_comments"] = len(comments)
@@ -476,7 +476,7 @@ def get_album_img(album_id):
 
         # Get Comments
         cursor.execute(
-            f"SELECT first_name, last_name, text FROM Comments c JOIN Users u ON c.user_id=u.user_id where c.photo_id={img['photo_id']};")
+            f"SELECT first_name, last_name, text FROM Comments c JOIN Users u ON c.user_id=u.user_id where c.photo_id={img['photo_id']} ORDER BY date DESC;")
         comments = cursor.fetchall()
         obj["comments"] = comments
         obj["num_comments"] = len(comments)
@@ -615,7 +615,7 @@ def comment_img():
     if result:
         return jsonify({"success": False, "message": "User can't comment on their own photo."})
 
-    cursor.execute(f"INSERT INTO Comments (user_id, photo_id, text) VALUES ({user_id}, {photo_id}, '{text}')")
+    cursor.execute(f"INSERT INTO Comments (user_id, photo_id, text, date) VALUES ({user_id}, {photo_id}, '{text}', '{datetime.now()}')")
     conn.commit()
     
     return jsonify({"success": True, "message": "Comment added."})
