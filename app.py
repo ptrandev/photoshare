@@ -32,7 +32,7 @@ load_dotenv()
 mysql = MySQL(cursorclass=DictCursor)
 app = Flask(__name__)
 
-cors = CORS(app, supports_credentials = True, resources={r"/*": {"origins": "*"}})
+cors = CORS(app, supports_credentials = True)
 
 app.secret_key = 'DeltaEchoEchoZuluNovemberUniformTangoSierra'
 
