@@ -124,7 +124,7 @@ def isEmailUnique(email):
 
 # DISPLAY USER PROFILE
 @app.route('/profile')
-@flask_login.login_required
+@jwt_required()
 def protected():
     return render_template('hello.html', name=flask_login.current_user.id, message="Here's your profile")
 
@@ -313,7 +313,7 @@ def create_album():
     user_id = cursor.fetchone()['user_id']
     album_name = request.json['album_name']
 
-    # check if album already exists
+    # Check if album already exists
     cursor.execute(
         f"SELECT album_id FROM Albums WHERE user_id={user_id} AND album_name='{album_name}';")
     album_id = cursor.fetchone()
@@ -527,7 +527,7 @@ def get_user_album():
     cursor = conn.cursor()
     cursor.execute(f"SELECT user_id FROM Users WHERE email = '{email}'")
     
-    # get user id and album id
+    # Get user id
     user_id = cursor.fetchone()['user_id']
     
     cursor.execute(f"SELECT album_id, album_name, user_id FROM Albums WHERE user_id={user_id}")
@@ -544,11 +544,11 @@ def get_user_album():
 
 # LIKE IMAGE
 @app.route('/albums/like', methods=['POST'])
-@flask_login.login_required
+@jwt_required()
 def like_img():
     cursor = conn.cursor()
     
-    user = flask_login.current_user
+    user = cursor.fetchone()['user_id']
     photo_id = request.json["photo_id"]
     like = request.json["like"]
     liked_already = cursor.execute(f"SELECT * FROM Likes WHERE user_id={user.id} AND photo_id={photo_id}")
@@ -564,11 +564,11 @@ def like_img():
 
 # COMMENT ON IMAGE
 @app.route('/albums/comment', methods=['POST'])
-@flask_login.login_required
+@jwt_required()
 def comment_img():
     cursor = conn.cursor()
     
-    user = flask_login.current_user
+    user = cursor.fetchone()['user_id']
     photo_id = request.json["photo_id"]
     text = request.json["text"]
     
@@ -598,9 +598,58 @@ def get_general_feed():
 
 # GET FRIENDS FEED
 @app.route('/albums/friend-feed', methods=['GET'])
-@flask_login.login_required
+@jwt_required()
 def get_friend_feed():
+    cursor = conn.cursor()
+
+    user = cursor.fetchone()['user_id']
+    cursor.execute(
+        f"SELECT a.album_id, a.album_name, a.user_id, u.first_name, u.last_name FROM Albums a JOIN Friends f ON a.user_id=f.friend2 JOIN Users u on a.user_id=u.user_id WHERE f.friend1={user.id} LIMIT 10"
+    )
+    result = cursor.fetchall()
+
+    albums = [
+        {
+            "album_id": album[0],
+            "album_name": album[1],
+            "user_id": album[2],
+            "user_name": f"{album[3]} {album[4]}",
+            "images": get_album_img(album[0]),
+        }
+        for album in result
+    ]
+
+    return jsonify(albums)
+
+
+# -------------------------- #
+# - RECOMMENDATIONS ROUTER - #
+# -------------------------- #
+
+# GET FRIEND RECOMMENDATIONS
+@app.route('/recommendations/friends', methods=['GET'])
+@jwt_required()
+def get_friend_recommendations():
+    cursor = conn.cursor()
+    user = cursor.fetchone()['user_id']
+    
+    cursor.execute(
+        f"SELECT DISTINCT f2.friend2, u.first_name, u.last_name FROM Friends f1 JOIN Friends f2 ON f1.friend2 = f2.friend1 JOIN Users u ON f2.friend2=u.user_id WHERE NOT EXISTS (SELECT 1 FROM Friends f WHERE f.friend1 = f1.friend1 and f.friend2 = f2.friend2) AND f1.friend1 <> f2.friend2 AND f1.friend1 = {user.id};"
+    )
+    
+    friend_recs = [
+        {"fr_id": r[0], "fr_name": f"{r[1]} {r[2]}"} for r in cursor.fetchall()
+    ]
+    
+    return jsonify(friend_recs)
+
+# GET ALBUM RECOMMENDATIONS
+@app.route('/recommendations/albums', methods=['GET'])
+@jwt_required()
+def get_album_recommendations():
+    """Get album recommendations based on users liked photos"""
     pass
+
 
 # --------------- #
 # - MAIN ROUTER - #
