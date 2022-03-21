@@ -70,8 +70,14 @@ const Register = () => {
       hometown: formValue.hometown,
       gender: formValue.gender,
       password: formValue.password,
-    }).then(() => {
-      navigate('/auth/login');
+    }).then(res => {
+      enqueueSnackbar(res.data.message, {
+        variant: res.data.success ? 'success' : 'error'
+      })
+
+      if (res.data.success) {
+        navigate('/auth/login');
+      }
     }).catch(() => {
       enqueueSnackbar("Registration failed. Try again.", {
         variant: "error",

@@ -1,13 +1,6 @@
 import {
   Grid,
   Typography,
-  Card,
-  CardContent,
-  List,
-  ListItem,
-  ListItemText,
-  Avatar,
-  ListItemIcon,
 } from "@mui/material";
 
 import { FriendsList, SearchAddFriend } from "components/friends";

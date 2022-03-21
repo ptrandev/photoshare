@@ -6,6 +6,7 @@
 import base64
 import os
 import shutil
+import time
 
 # Flask Imports
 import flask
@@ -110,7 +111,7 @@ def getUserIdFromEmail(email):
 def isEmailUnique(email):
     # use this to check if a email has already been registered
     cursor = conn.cursor()
-    if cursor.execute(f"SELECT email  FROM Users WHERE email = '{email}'"):
+    if cursor.execute(f"SELECT email FROM Users WHERE email = '{email}'"):
         # this means there are greater than zero entries with that email
         return False
     else:
@@ -123,7 +124,7 @@ def isEmailUnique(email):
 
 # DISPLAY USER PROFILE
 @app.route('/profile')
-@flask_login.login_required
+@jwt_required()
 def protected():
     return render_template('hello.html', name=flask_login.current_user.id, message="Here's your profile")
 
@@ -198,10 +199,9 @@ def register():
             f"INSERT INTO Users (email, password, first_name, last_name, dob, hometown, gender) VALUES ('{email}', '{password}', '{first_name}', '{last_name}', '{dob}', '{hometown}', '{gender}')"))
         conn.commit()
 
-        return {"success": True}
+        return {"success": True, "message": "Registration succeeded. You can login now."}
     else:
-        print("couldn't find all tokens")
-        return {"success": False}
+        return {"success": False, "message": "Email already registered. Try again with a different email."}
 
 
 # ------------------ #
@@ -284,7 +284,7 @@ def list_friends():
     cursor = conn.cursor()
     cursor.execute(f"SELECT user_id FROM Users WHERE email = '{email}'")
 
-    # Get ids of current user and friend
+    # Get ids of current user
     user_id = cursor.fetchone()['user_id']
 
     # Get friends
@@ -300,86 +300,111 @@ def list_friends():
 # - ALBUM ROUTER - #
 # ---------------- #
 
+# CREATE ALBUM
+@app.route('/albums/create', methods=['POST'])
+@jwt_required()
+def create_album():
+    # Get id from email
+    email = get_jwt_identity()
+    cursor = conn.cursor()
+    cursor.execute(f"SELECT user_id FROM Users WHERE email = '{email}'")
+
+    # Get ids and album name
+    user_id = cursor.fetchone()['user_id']
+    album_name = request.json['album_name']
+
+    # Check if album already exists
+    cursor.execute(
+        f"SELECT album_id FROM Albums WHERE user_id={user_id} AND album_name='{album_name}';")
+    album_id = cursor.fetchone()
+
+    if album_id:
+        return jsonify({"success": False, "message": "Album with that name already exists."})
+
+    # Save album to database
+    cursor.execute(
+        f"INSERT INTO Albums (user_id, album_name) VALUES ('{user_id}', '{album_name}');")
+    conn.commit()
+    
+    cursor.execute(
+        f"SELECT album_id FROM Albums WHERE user_id={user_id} AND album_name='{album_name}';")
+    album_id = cursor.fetchone()['album_id']
+
+    return jsonify({"success": True, "message": "Album created.", "album_id": album_id})
+
 # GET IMAGE
 @app.route('/albums/imgs', methods=['GET'])
 def get_img():
     album_id = request.args.get('album_id')
     filename = request.args.get('filename')
-    return send_file(f"./imgs/{album_id}/{filename}")
+    return send_file(f"./public/imgs/{album_id}/{filename}")
 
 # UPLOAD IMAGE
-@app.route('/albums/', methods=['POST'])
-@flask_login.login_required
+@app.route('/albums/upload', methods=['POST'])
+@jwt_required()
 def upload_img():
-    conn = mysql.connect()
+    # Get id from email
+    email = get_jwt_identity()
     cursor = conn.cursor()
+    cursor.execute(f"SELECT user_id FROM Users WHERE email = '{email}'")
 
-    # Variables
-    user = flask_login.current_user
-    album_name = request.form.get('album_name')
-    form = request.form
-    files = request.files
+    # # Get ids and album name
+    user_id = cursor.fetchone()['user_id']
+    album_id = request.form['album_id']
+    file = request.files['file']
+    caption = request.form['caption']
+    tags = json.loads(request.form['tags'])
 
-    # Save album to database
+    # Check if album exists
     cursor.execute(
-        f"INSERT INTO Albums (user_id, album_name) VALUES ('{user.id}', '{album_name}');")
-    conn.commit()
-    cursor.execute(
-        f"SELECT album_id FROM Albums WHERE user_id={user.id} AND album_name='{album_name}';")
-    album_id = cursor.fetchone()[0]
+        f"SELECT album_id FROM Albums WHERE user_id={user_id} AND album_id={album_id};")
+    album_id = cursor.fetchone()['album_id']
 
+    if not album_id:
+        return jsonify({"success": False, "message": "Album does not exist."})
+    
     # Check if path exists
-    path = f"./imgs/{album_id}"
+    path = f"./public/imgs/{album_id}"
     if not os.path.exists(path):
         os.makedirs(path)
+    
+    # Save image to path
+    save_path = f"{path}/{int(time.time())}-{file.filename}"
+    file.save(save_path)
 
-    # Save images to database
-    def allowed_file(filename):
-        return '.' in filename and filename.rsplit('.', 1)[1] in ALLOWED_EXTENSIONS
+    # Save image to database
+    cursor.execute(
+        f"INSERT INTO Photos (album_id, caption, data) VALUES ('{album_id}', '{caption}', '{save_path}');")
+    
+    # get photo id
+    cursor.execute(
+        f'SELECT photo_id FROM Photos WHERE album_id={album_id} AND data="{save_path}" AND caption="{caption}";')
+    photo_id = cursor.fetchone()['photo_id']
 
-    for img in files:
-        # Add captions
-        if not allowed_file(img):
-            continue
-
-        caption = form.get("cap_" + img)
-        files.get(img).save(f"{path}/{img}")
-        cursor.execute(
-            f'INSERT INTO Photos (album_id, caption, photo_name) VALUES ({album_id}, "{caption}", "{img}");')
-        conn.commit()
-
-        # Add tags
-        if form.get("tags_" + img) is None:
-            continue
-
-        tags = form.get("tags_" + img).split(",")
-
-        for tag in tags:
-            if tag == '': continue
-            
-            # Check if tag already exists
-            exists = cursor.execute(f"SELECT * FROM Tags WHERE tag='{tag}';")
-            if not exists:
-                cursor.execute(f"INSERT INTO Tags (tag) VALUES ('{tag}');")
-                conn.commit()
-            
-            cursor.execute(f"SELECT tag_id FROM Tags WHERE tag='{tag}';")
-            tag_id = cursor.fetchone()[0]
-
-            cursor.execute(
-                f'SELECT photo_id FROM Photos WHERE album_id={album_id} AND photo_name="{img}" AND caption={caption}";')
-            photo_id = cursor.fetchone()[0]
-
-            cursor.execute(
-                f"INSERT INTO TagToPhotos (tag_id, photo_id) VALUES ({tag_id}, {photo_id});")
+    # save tags
+    for tag_name in tags:
+        # add tag if it doesn't exist
+        exists = cursor.execute(f"SELECT * FROM Tags WHERE tag_name='{tag_name}';")
+        if not exists:
+            cursor.execute(f"INSERT INTO Tags (tag_name) VALUES ('{tag_name}');")
             conn.commit()
 
-    return "Image Successfully Uploaded"
+        # get tag id
+        cursor.execute(f"SELECT tag_id FROM Tags WHERE tag_name='{tag_name}';")
+        tag_id = cursor.fetchone()['tag_id']
+
+        # add tag to photo
+        cursor.execute(
+            f"INSERT INTO Has_Tag (tag_id, photo_id) VALUES ({tag_id}, {photo_id});")
+        conn.commit()
+
+    conn.commit()
+
+    return jsonify({"success": True, "message": "Image uploaded."})
 
 # GET ALBUM/IMAGES FROM ALBUM
-@app.route('/albums/', methods=['GET'])
+@app.route('/albums', methods=['GET'])
 def get_album():
-    conn = mysql.connect()
     cursor = conn.cursor()
 
     # Variables
@@ -392,96 +417,138 @@ def get_album():
     # Data
     album = {
         "album_id": album_id,
-        "album_name": result[0],
-        "user_id": result[1],
-        "user_name": f"{result[2]} {result[3]}",
-        "images": get_album_img(album_id)
+        "album_name": result['album_name'],
+        "user_id": result['user_id'],
+        "first_name": result['first_name'],
+        "last_name": result['last_name'],
+        "images": get_album_img(album_id),
     }
 
     return jsonify(album)
 
 def get_album_img(album_id):
-    conn = mysql.connect()
     cursor = conn.cursor()
 
     cursor.execute(
-        f"SELECT photo_id, caption, photo_location FROM Photos WHERE album_id={album_id}")
+        f"SELECT photo_id, caption, data FROM Photos WHERE album_id={album_id}")
     result = cursor.fetchall()
 
     imgs = []
     for img in result:
-        obj = {"photo_id": img[0], "caption": img[1], "filename": img[2]}
+        obj = img
 
         # Get Likes
-        cursor.execute(
-            f"SELECT first_name, last_name FROM Likes l JOIN Users u ON l.user_id=u.user_id where l.photo_id={img[0]};")
-        likes = [f"{a[0]} {a[1]}" for a in cursor.fetchall()]
-        obj["likes"] = likes
-        obj["num_likes"] = len(likes)
+        # cursor.execute(
+        #     f"SELECT first_name, last_name FROM Likes l JOIN Users u ON l.user_id=u.user_id where l.photo_id={img['photo_id']};")
+        # likes = [f"{a[0]} {a[1]}" for a in cursor.fetchall()]
+        # obj["likes"] = likes
+        # obj["num_likes"] = len(likes)
 
         # Get Comments
         cursor.execute(
-            f"SELECT first_name, last_name, text FROM Comments c JOIN Users u ON c.user_id=u.user_id where c.photo_id={img[0]};")
-        comments = [{"user": f"{a[0]} {a[1]}", "text": a[2]}
-                    for a in cursor.fetchall()]
+            f"SELECT first_name, last_name, text FROM Comments c JOIN Users u ON c.user_id=u.user_id where c.photo_id={img['photo_id']};")
+        comments = cursor.fetchall()
         obj["comments"] = comments
         obj["num_comments"] = len(comments)
+
+        # Get Tags
+        cursor.execute(
+            f"SELECT t.tag_id, t.tag_name FROM Has_Tag ht JOIN Photos p JOIN Tags t ON t.tag_id=ht.tag_id AND p.photo_id=ht.photo_id where p.photo_id={img['photo_id']};")
+        tags = cursor.fetchall()
+        obj["tags"] = tags
 
         imgs.append(obj)
 
     return imgs
 
+# DELETE IMAGE
+@app.route('/albums/photo/delete', methods=['POST'])
+@jwt_required()
+def delete_img():
+    # Get id from email
+    email = get_jwt_identity()
+    cursor = conn.cursor()
+    cursor.execute(f"SELECT user_id FROM Users WHERE email = '{email}'")
+
+    # Get user id and photo id
+    user_id = cursor.fetchone()['user_id']
+    photo_id = request.json['photo_id']
+
+    # check if photo exists and belongs to user
+    cursor.execute(
+        f"SELECT * FROM Photos p JOIN Albums a WHERE p.photo_id={photo_id} AND a.user_id={user_id};")
+    result = cursor.fetchone()
+
+    if not result:
+        return jsonify({"success": False, "message": "Photo does not exist or the user does not own the image."})
+
+    # Delete photo
+    cursor.execute(f"DELETE FROM Photos WHERE photo_id={photo_id};")
+    conn.commit()
+
+    return jsonify({"success": True, "message": "Photo deleted."})
+
 # DELETE ALBUM
 @app.route('/albums/delete', methods=['POST'])
-@flask_login.login_required
+@jwt_required()
 def delete_album():
-    conn = mysql.connect()
+    # Get id from email
+    email = get_jwt_identity()
     cursor = conn.cursor()
-    
-    user = flask_login.current_user
+    cursor.execute(f"SELECT user_id FROM Users WHERE email = '{email}'")
+
+    # get user id and album id
+    user_id = cursor.fetchone()['user_id']
     album_id = request.json["album_id"]
     
-    cursor.execute(f"SELECT user_id FROM Albums WHERE album_id={album_id};")
-    owner = cursor.fetchone()[0]
+    # check if user owns album
+    cursor.execute(f"SELECT * FROM Albums WHERE album_id={album_id} AND user_id={user_id};")
+    album = cursor.fetchone()
     
-    if owner == user.id:
-        cursor.execute(f"DELETE FROM Albums WHERE album_id={album_id};")
-        conn.commit()
-        
-        shutil.rmtree(f"./imgs/{album_id}")
-        
-    return "Image Successfully Deleted"
+    if not album:
+        return jsonify({"success": False, "message": "User does not own the album."})
+
+    cursor.execute(f"DELETE FROM Albums WHERE album_id={album_id};")
+    conn.commit()
+    
+    # Check if path exists and delete it
+    path = f"./public/imgs/{album_id}"
+    if os.path.exists(path):
+        shutil.rmtree(f"./public/imgs/{album_id}")
+
+    return jsonify({"success": True, "message": "Album deleted."})
 
 # VIEW USER ALBUMS
-@app.route('/albums/user/', methods=['GET'])
-@flask_login.login_required
+@app.route('/albums/user', methods=['GET'])
+@jwt_required()
 def get_user_album():
-    conn = mysql.connect()
+    # Get id from email
+    email = get_jwt_identity()
     cursor = conn.cursor()
+    cursor.execute(f"SELECT user_id FROM Users WHERE email = '{email}'")
     
-    user = flask_login.current_user
+    # Get user id
+    user_id = cursor.fetchone()['user_id']
     
-    cursor.execute(f"SELECT album_id, album_name, user_id FROM Albums WHERE user_id={user.id}")
+    cursor.execute(f"SELECT album_id, album_name, user_id FROM Albums WHERE user_id={user_id}")
     result = cursor.fetchall()
     
     albums = [{
-        "album_id": album[0],
-		"album_name": album[1],
-		"user_id": album[2],
-		"user_name": "me",
-		"images": get_album_img(album[0])
+        "album_id": album['album_id'],
+        "album_name": album['album_name'],
+        "user_id": album['user_id'],
+        "images": get_album_img(album['album_id'])
     } for album in result]
     
-    return jsonify(albums)
+    return jsonify({"albums": albums})
 
 # LIKE IMAGE
 @app.route('/albums/like', methods=['POST'])
-@flask_login.login_required
+@jwt_required()
 def like_img():
-    conn = mysql.connect()
     cursor = conn.cursor()
     
-    user = flask_login.current_user
+    user = cursor.fetchone()['user_id']
     photo_id = request.json["photo_id"]
     like = request.json["like"]
     liked_already = cursor.execute(f"SELECT * FROM Likes WHERE user_id={user.id} AND photo_id={photo_id}")
@@ -497,12 +564,11 @@ def like_img():
 
 # COMMENT ON IMAGE
 @app.route('/albums/comment', methods=['POST'])
-@flask_login.login_required
+@jwt_required()
 def comment_img():
-    conn = mysql.connect()
     cursor = conn.cursor()
     
-    user = flask_login.current_user
+    user = cursor.fetchone()['user_id']
     photo_id = request.json["photo_id"]
     text = request.json["text"]
     
@@ -512,38 +578,82 @@ def comment_img():
     return "Image Successfully Commented"
 
 # GET GENERAL FEED
-@app.route('/albums/general-feed', methods=['GET'])
+@app.route('/albums/all', methods=['GET'])
 def get_general_feed():
-    conn = mysql.connect()
     cursor = conn.cursor()
     
-    cursor.execute(f"SELECT a.album_id, a.album_name, u.user_id, u.first_name, u.last_name FROM Albums a JOIN Users u ON a.user_id=u.user_id ORDER BY created DESC LIMIT 10;")
+    cursor.execute(f"SELECT a.album_id, a.album_name, u.user_id, u.first_name, u.last_name FROM Albums a JOIN Users u ON a.user_id=u.user_id ORDER BY created DESC;")
     result = cursor.fetchall()
     
     albums = [{
-		"album_id": album[0],
-		"album_name": album[1],
-		"user_id": album[2],
-		"user_name": f"{album[3]} {album[4]}",
-		"images": get_album_img(album[0])
-	} for album in result]
+        "album_id": album['album_id'],
+        "album_name": album['album_name'],
+        "user_id": album['user_id'],
+        "first_name": album['first_name'],
+        "last_name": album['last_name'],
+        "images": get_album_img(album['album_id'])
+    } for album in result]
     
-    return jsonify(albums)
+    return jsonify({"albums": albums})
 
 # GET FRIENDS FEED
 @app.route('/albums/friend-feed', methods=['GET'])
-@flask_login.login_required
+@jwt_required()
 def get_friend_feed():
+    cursor = conn.cursor()
+
+    user = cursor.fetchone()['user_id']
+    cursor.execute(
+        f"SELECT a.album_id, a.album_name, a.user_id, u.first_name, u.last_name FROM Albums a JOIN Friends f ON a.user_id=f.friend2 JOIN Users u on a.user_id=u.user_id WHERE f.friend1={user.id} LIMIT 10"
+    )
+    result = cursor.fetchall()
+
+    albums = [
+        {
+            "album_id": album[0],
+            "album_name": album[1],
+            "user_id": album[2],
+            "user_name": f"{album[3]} {album[4]}",
+            "images": get_album_img(album[0]),
+        }
+        for album in result
+    ]
+
+    return jsonify(albums)
+
+
+# -------------------------- #
+# - RECOMMENDATIONS ROUTER - #
+# -------------------------- #
+
+# GET FRIEND RECOMMENDATIONS
+@app.route('/recommendations/friends', methods=['GET'])
+@jwt_required()
+def get_friend_recommendations():
+    cursor = conn.cursor()
+    user = cursor.fetchone()['user_id']
+    
+    cursor.execute(
+        f"SELECT DISTINCT f2.friend2, u.first_name, u.last_name FROM Friends f1 JOIN Friends f2 ON f1.friend2 = f2.friend1 JOIN Users u ON f2.friend2=u.user_id WHERE NOT EXISTS (SELECT 1 FROM Friends f WHERE f.friend1 = f1.friend1 and f.friend2 = f2.friend2) AND f1.friend1 <> f2.friend2 AND f1.friend1 = {user.id};"
+    )
+    
+    friend_recs = [
+        {"fr_id": r[0], "fr_name": f"{r[1]} {r[2]}"} for r in cursor.fetchall()
+    ]
+    
+    return jsonify(friend_recs)
+
+# GET ALBUM RECOMMENDATIONS
+@app.route('/recommendations/albums', methods=['GET'])
+@jwt_required()
+def get_album_recommendations():
+    """Get album recommendations based on users liked photos"""
     pass
+
 
 # --------------- #
 # - MAIN ROUTER - #
 # --------------- #
-
-@app.route('/whoami', methods=['GET'])
-@flask_login.login_required
-def whoami():
-    return flask_login.current_user.id
 
 # ROOT
 @app.route("/", methods=['GET'])
