@@ -669,6 +669,90 @@ def get_friend_feed():
 
     return jsonify(albums)
 
+# --------------- #
+# - TAGS ROUTER - # 
+# --------------- #
+
+# GET ALL TAGS
+@app.route('/tags/all', methods=['GET'])
+def get_all_tags():
+    cursor = conn.cursor()
+
+    cursor.execute(f"SELECT * FROM Tags;")
+    tags = cursor.fetchall()
+
+    return jsonify({"tags": tags})
+
+# GET TAG NAME
+@app.route('/tag/name', methods=['GET'])
+def get_tag_name():
+    tag_id = request.args.get("tag_id")
+    cursor = conn.cursor()
+
+    cursor.execute(f"SELECT * FROM Tags WHERE tag_id={tag_id}")
+    tag = cursor.fetchone()
+
+    return jsonify({"tag": tag})
+
+# GET PHOTOS BY TAG
+@app.route('/tag/photos', methods=['GET'])
+def get_photos_by_tag():
+    tag_id = request.args.get("tag_id")
+
+    cursor = conn.cursor()
+
+    cursor.execute(f"SELECT p.data, p.photo_id, p.caption, p.album_id, u.first_name, u.last_name FROM Photos p JOIN Has_Tag ht JOIN Albums a JOIN Users u ON u.user_id=a.user_id AND p.album_id=a.album_id AND ht.photo_id=p.photo_id WHERE ht.tag_id={tag_id};")
+    photos = cursor.fetchall()
+
+    for photo in photos:
+        # get tags
+        cursor.execute(f"SELECT t.tag_id, t.tag_name FROM Tags t JOIN Has_Tag ht WHERE ht.photo_id={photo['photo_id']} AND ht.tag_id=t.tag_id;")
+        tags = cursor.fetchall()
+        photo['tags'] = tags
+
+    return jsonify({"photos": photos})
+
+# GET USER'S TAGS
+@app.route('/tags/user', methods=['GET'])
+@jwt_required()
+def get_user_tags():
+    # Get id from email
+    email = get_jwt_identity()
+    cursor = conn.cursor()
+    cursor.execute(f"SELECT user_id FROM Users WHERE email = '{email}'")
+    
+    # Get user id
+    user_id = cursor.fetchone()['user_id']
+
+    cursor.execute(f"SELECT DISTINCT t.tag_id, t.tag_name FROM Tags t JOIN Has_Tag ht JOIN Photos p JOIN Albums a JOIN Users u ON u.user_id=a.user_id AND p.album_id=a.album_id AND t.tag_id=ht.tag_id AND p.photo_id=ht.photo_id WHERE u.user_id={user_id} AND ht.tag_id=t.tag_id;")
+    tags = cursor.fetchall()
+
+    return jsonify({"tags": tags})
+
+# GET USER'S TAG PHOTOS
+@app.route('/tag/user/photos', methods=['GET'])
+@jwt_required()
+def get_user_tags_photos():
+    tag_id = request.args.get("tag_id")
+
+    # Get id from email
+    email = get_jwt_identity()
+    cursor = conn.cursor()
+    cursor.execute(f"SELECT user_id FROM Users WHERE email = '{email}'")
+    
+    # Get user id
+    user_id = cursor.fetchone()['user_id']
+
+    cursor.execute(f"SELECT p.data, p.photo_id, p.caption, p.album_id, u.first_name, u.last_name FROM Photos p JOIN Has_Tag ht JOIN Albums a JOIN Users u ON u.user_id=a.user_id AND p.album_id=a.album_id AND ht.photo_id=p.photo_id WHERE ht.tag_id={tag_id} AND u.user_id={user_id};")
+    photos = cursor.fetchall()
+
+    for photo in photos:
+        # get tags
+        cursor.execute(f"SELECT t.tag_id, t.tag_name FROM Tags t JOIN Has_Tag ht WHERE ht.photo_id={photo['photo_id']} AND ht.tag_id=t.tag_id;")
+        tags = cursor.fetchall()
+        photo['tags'] = tags
+
+    return jsonify({"photos": photos})
 
 # -------------------------- #
 # - RECOMMENDATIONS ROUTER - #

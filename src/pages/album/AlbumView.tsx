@@ -3,15 +3,10 @@ import { useEffect, useState } from 'react';
 import {
   Typography,
   Grid,
-  Card,
-  CardContent,
-  Stack,
-  Chip,
-  Button,
-  Link,
 } from "@mui/material";
-import { Link as RouterLink } from 'react-router-dom';
 import { useParams } from 'react-router-dom';
+
+import PhotoPreview from 'components/photo/PhotoPreview';
 import axios from '../../utils/axios';
 
 interface Album {
@@ -51,29 +46,7 @@ const AlbumView : FC = () => {
       </Grid>
       {album?.images?.map((image) => (
         <Grid item xs={12} md={6}>
-          <Card>
-            <CardContent>
-              <img
-                src={image.data.replace("./public", "")}
-                alt={image.caption}
-                width="100%"
-              />
-              <Typography variant="body1" mb={2}>
-                {image.caption}
-              </Typography>
-              <Stack direction="row" spacing={2} mb={2}>
-                {image?.tags?.map((tag) => (
-                  <Chip key={tag.tag_name} label={tag.tag_name} />
-                ))}
-              </Stack>
-              <Link
-                component={RouterLink}
-                to={`/photo/${image.photo_id}`}
-              >
-                <Button variant="contained">View</Button>
-              </Link>
-            </CardContent>
-          </Card>
+          <PhotoPreview image={image} album={album} />
         </Grid>
       ))}
       <Grid item xs={12}>

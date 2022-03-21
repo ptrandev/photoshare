@@ -46,6 +46,12 @@ const DrawerList = () => {
       loginRequired: true,
     },
     {
+      label: 'My Tags',
+      icon: <StyleIcon />,
+      link: '/tags/my',
+      loginRequired: true,
+    },
+    {
       label: 'Create Album',
       icon: <UploadIcon />,
       link: '/album/create',
