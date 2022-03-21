@@ -238,6 +238,7 @@ def add_friend():
         f"INSERT INTO Friends (friend_a, friend_b) VALUES ('{user_id}', '{friend_id}')")
     cursor.execute(
         f"INSERT INTO Friends (friend_a, friend_b) VALUES ('{friend_id}', '{user_id}')")
+    conn.commit()
 
     return jsonify({"success": True, "message": "Friend added."})
 
@@ -811,13 +812,14 @@ def get_friend_recommendations():
     user_id = cursor.fetchone()['user_id']
 
     cursor.execute(
-        f"SELECT DISTINCT f2.friend_b, u.first_name, u.last_name FROM Friends f1 JOIN Friends f2 ON f1.friend_b = f2.friend_a JOIN Users u ON f2.friend_b=u.user_id WHERE NOT EXISTS (SELECT * FROM Friends f WHERE f.friend_a = f1.friend_a and f.friend_b = f2.friend_b) AND f1.friend_a <> f2.friend_b AND f1.friend_a = {user_id};"
+        f"SELECT DISTINCT f2.friend_b, u.first_name, u.last_name, u.email FROM Friends f1 JOIN Friends f2 ON f1.friend_b = f2.friend_a JOIN Users u ON f2.friend_b=u.user_id WHERE NOT EXISTS (SELECT * FROM Friends f WHERE f.friend_a = f1.friend_a and f.friend_b = f2.friend_b) AND f1.friend_a <> f2.friend_b AND f1.friend_a = {user_id};"
     )
 
     friend_recs = [
         {"user_id": r['friend_b'], 
         "first_name": r['first_name'],
         "last_name": r['last_name'],
+        "email": r['email'],
         } for r in cursor.fetchall()
     ]
     
