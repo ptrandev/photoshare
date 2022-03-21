@@ -60,15 +60,15 @@ const Home : FC = () => {
                     By {album.first_name} {album.last_name}
                   </Typography>
                 </Box>
-                <Link
-                  component={RouterLink}
-                  to={`/album/${album.album_id}`}
-                >
+                <Link component={RouterLink} to={`/album/${album.album_id}`}>
                   <Button variant="contained">View</Button>
                 </Link>
               </CardContent>
             </Card>
           ))}
+          {albums?.length === 0 && (
+            <Typography variant="body1">No albums to display</Typography>
+          )}
         </Stack>
       </Grid>
       <Grid item xs={12} md={6}>
@@ -80,6 +80,9 @@ const Home : FC = () => {
             album?.images?.map((image) => {
               return <PhotoPreview image={image} album={album} />;
             })
+          )}
+          {albums?.length === 0 && (
+            <Typography variant="body1">No photos to display</Typography>
           )}
         </Stack>
       </Grid>

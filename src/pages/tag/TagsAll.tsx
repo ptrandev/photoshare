@@ -47,6 +47,9 @@ const TagsAll : FC = () => {
               </Button>
             </Link>
           ))}
+          {tags?.length === 0 && (
+            <Typography variant="body1">No tags found.</Typography>
+          )}
         </Box>
       </Grid>
     </Grid>

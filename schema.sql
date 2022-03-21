@@ -36,7 +36,7 @@ CREATE TABLE Photos (
   caption VARCHAR(255),
   data VARCHAR(255) NOT NULL,
   CONSTRAINT photo_pk PRIMARY KEY (photo_id),
-  CONSTRAINT album_id FOREIGN KEY (album_id) REFERENCES Albums(album_id)
+  CONSTRAINT album_id FOREIGN KEY (album_id) REFERENCES Albums(album_id) ON DELETE CASCADE
 );
 
 CREATE TABLE Comments (
