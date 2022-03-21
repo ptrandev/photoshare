@@ -41,7 +41,7 @@ const AlbumMyAlbums : FC = () => {
           My Albums
         </Typography>
       </Grid>
-      <Grid container item xs={12}>
+      <Grid container item xs={12} spacing={2}>
         {albums?.map((album) => (
           <Grid item xs={12} md={6} lg={4}>
             <Card>

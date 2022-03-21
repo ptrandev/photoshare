@@ -59,8 +59,15 @@ CREATE TABLE Tags (
 CREATE TABLE Has_Tag (
   tag_id int4,
   photo_id int4,
-  CONSTRAINT tag_id FOREIGN KEY (tag_id) REFERENCES Tags(tag_id),
-  CONSTRAINT photo_id FOREIGN KEY (photo_id) REFERENCES Photos(photo_id) ON DELETE CASCADE
+  FOREIGN KEY (tag_id) REFERENCES Tags(tag_id),
+  FOREIGN KEY (photo_id) REFERENCES Photos(photo_id) ON DELETE CASCADE
+);
+
+CREATE TABLE Likes (
+  user_id int4,
+  photo_id int4,
+  FOREIGN KEY (user_id) REFERENCES Users(user_id),
+  FOREIGN KEY (photo_id) REFERENCES Photos(photo_id) ON DELETE CASCADE
 );
 
 INSERT INTO Users (email, password, first_name, last_name, dob, hometown, gender) VALUES ('dcmag@bu.edu', 'dcmag', 'Dominic', 'Maglione', '2001-12-18', 'Waterford', 'Male');

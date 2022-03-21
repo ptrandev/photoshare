@@ -333,11 +333,41 @@ def create_album():
     return jsonify({"success": True, "message": "Album created.", "album_id": album_id})
 
 # GET IMAGE
-@app.route('/albums/imgs', methods=['GET'])
+@app.route('/imgs', methods=['GET'])
 def get_img():
-    album_id = request.args.get('album_id')
-    filename = request.args.get('filename')
-    return send_file(f"./public/imgs/{album_id}/{filename}")
+    photo_id = request.args.get('photo_id')
+    cursor = conn.cursor()
+
+    cursor.execute(
+        f"SELECT photo_id, album_id, caption, data FROM Photos WHERE photo_id={photo_id}")
+    img = cursor.fetchone()
+
+    obj = img
+
+    # get number of likes
+    cursor.execute(
+        f"SELECT COUNT(*) FROM Likes WHERE photo_id={photo_id}")
+    obj['num_likes'] = cursor.fetchone()['COUNT(*)']
+
+    # get likes names
+    cursor.execute(
+        f"SELECT U.first_name, U.last_name FROM Likes L JOIN Users U ON U.user_id = L.user_id WHERE photo_id={photo_id}")
+    obj['likes'] = cursor.fetchall()
+
+    # get comments
+    cursor.execute(
+        f"SELECT first_name, last_name, text FROM Comments c JOIN Users u ON c.user_id=u.user_id WHERE c.photo_id={img['photo_id']};")
+    comments = cursor.fetchall()
+    obj["comments"] = comments
+    obj["num_comments"] = len(comments)
+
+    # Get Tags
+    cursor.execute(
+        f"SELECT t.tag_id, t.tag_name FROM Has_Tag ht JOIN Photos p JOIN Tags t ON t.tag_id=ht.tag_id AND p.photo_id=ht.photo_id where p.photo_id={img['photo_id']};")
+    tags = cursor.fetchall()
+    obj["tags"] = tags
+
+    return jsonify(obj)
 
 # UPLOAD IMAGE
 @app.route('/albums/upload', methods=['POST'])
@@ -543,45 +573,58 @@ def get_user_album():
     return jsonify({"albums": albums})
 
 # LIKE IMAGE
-@app.route('/albums/like', methods=['POST'])
+@app.route('/imgs/like', methods=['POST'])
 @jwt_required()
 def like_img():
+    # Get id from email
+    email = get_jwt_identity()
     cursor = conn.cursor()
+    cursor.execute(f"SELECT user_id FROM Users WHERE email = '{email}'")
     
-    user = cursor.fetchone()['user_id']
+    user_id = cursor.fetchone()['user_id']
     photo_id = request.json["photo_id"]
-    like = request.json["like"]
-    liked_already = cursor.execute(f"SELECT * FROM Likes WHERE user_id={user.id} AND photo_id={photo_id}")
+
+    liked_already = cursor.execute(f"SELECT * FROM Likes WHERE user_id={user_id} AND photo_id={photo_id}")
     
-    if like and not liked_already:
-        cursor.execute(f"INSERT INTO Likes (user_id, photo_id) VALUES ({user.id}, {photo_id})")
-        conn.commit()
-    elif not like and liked_already:
-        cursor.execute(f"DELETE FROM Likes WHERE user_id={user.id} AND photo_id={photo_id}")
-        conn.commit()
-        
-    return "Image Successfully Liked"
+    if liked_already:
+        return jsonify({"success": False, "message": "Already liked."})
+
+    cursor.execute(f"INSERT INTO Likes (user_id, photo_id) VALUES ({user_id}, {photo_id})")
+    conn.commit()
+
+    return jsonify({"success": True, "message": "Liked."})
 
 # COMMENT ON IMAGE
-@app.route('/albums/comment', methods=['POST'])
+@app.route('/imgs/comment', methods=['POST'])
 @jwt_required()
 def comment_img():
+    # Get id from email
+    email = get_jwt_identity()
     cursor = conn.cursor()
+    cursor.execute(f"SELECT user_id FROM Users WHERE email = '{email}'")
     
-    user = cursor.fetchone()['user_id']
+    # Get user id, photo id, comment text
+    user_id = cursor.fetchone()['user_id']
     photo_id = request.json["photo_id"]
     text = request.json["text"]
-    
-    cursor.execute(f"INSERT INTO Comments (user_id, photo_id, text) VALUES ({user.id}, {photo_id}, '{text}')")
+
+    # user can't comment on their own photo
+    cursor.execute(f"SELECT * FROM Photos JOIN Albums WHERE photo_id={photo_id} AND user_id={user_id}")
+    result = cursor.fetchone()
+
+    if result:
+        return jsonify({"success": False, "message": "User can't comment on their own photo."})
+
+    cursor.execute(f"INSERT INTO Comments (user_id, photo_id, text) VALUES ({user_id}, {photo_id}, '{text}')")
     conn.commit()
     
-    return "Image Successfully Commented"
+    return jsonify({"success": True, "message": "Comment added."})
 
 # GET GENERAL FEED
 @app.route('/albums/all', methods=['GET'])
 def get_general_feed():
     cursor = conn.cursor()
-    
+
     cursor.execute(f"SELECT a.album_id, a.album_name, u.user_id, u.first_name, u.last_name FROM Albums a JOIN Users u ON a.user_id=u.user_id ORDER BY created DESC;")
     result = cursor.fetchall()
     
@@ -600,11 +643,16 @@ def get_general_feed():
 @app.route('/albums/friend-feed', methods=['GET'])
 @jwt_required()
 def get_friend_feed():
+    # Get id from email
+    email = get_jwt_identity()
     cursor = conn.cursor()
+    cursor.execute(f"SELECT user_id FROM Users WHERE email = '{email}'")
+    
+    # Get user id
+    user_id = cursor.fetchone()['user_id']
 
-    user = cursor.fetchone()['user_id']
     cursor.execute(
-        f"SELECT a.album_id, a.album_name, a.user_id, u.first_name, u.last_name FROM Albums a JOIN Friends f ON a.user_id=f.friend2 JOIN Users u on a.user_id=u.user_id WHERE f.friend1={user.id} LIMIT 10"
+        f"SELECT a.album_id, a.album_name, a.user_id, u.first_name, u.last_name FROM Albums a JOIN Friends f ON a.user_id=f.friend2 JOIN Users u on a.user_id=u.user_id WHERE f.friend1={user_id} LIMIT 10"
     )
     result = cursor.fetchall()
 
@@ -630,15 +678,23 @@ def get_friend_feed():
 @app.route('/recommendations/friends', methods=['GET'])
 @jwt_required()
 def get_friend_recommendations():
+    # Get id from email
+    email = get_jwt_identity()
     cursor = conn.cursor()
-    user = cursor.fetchone()['user_id']
-    
+    cursor.execute(f"SELECT user_id FROM Users WHERE email = '{email}'")
+
+    # Get user id
+    user_id = cursor.fetchone()['user_id']
+
     cursor.execute(
-        f"SELECT DISTINCT f2.friend2, u.first_name, u.last_name FROM Friends f1 JOIN Friends f2 ON f1.friend2 = f2.friend1 JOIN Users u ON f2.friend2=u.user_id WHERE NOT EXISTS (SELECT 1 FROM Friends f WHERE f.friend1 = f1.friend1 and f.friend2 = f2.friend2) AND f1.friend1 <> f2.friend2 AND f1.friend1 = {user.id};"
+        f"SELECT DISTINCT f2.friend_b, u.first_name, u.last_name FROM Friends f1 JOIN Friends f2 ON f1.friend_b = f2.friend_a JOIN Users u ON f2.friend_b=u.user_id WHERE NOT EXISTS (SELECT * FROM Friends f WHERE f.friend_a = f1.friend_a and f.friend_b = f2.friend_b) AND f1.friend_a <> f2.friend_b AND f1.friend_a = {user_id};"
     )
-    
+
     friend_recs = [
-        {"fr_id": r[0], "fr_name": f"{r[1]} {r[2]}"} for r in cursor.fetchall()
+        {"user_id": r['friend_b'], 
+        "first_name": r['first_name'],
+        "last_name": r['last_name'],
+        } for r in cursor.fetchall()
     ]
     
     return jsonify(friend_recs)

@@ -10,6 +10,7 @@ import AlbumCreate from "./pages/album/AlbumCreate";
 import AlbumEdit from "./pages/album/AlbumEdit";
 import AlbumMyAlbums from "./pages/album/AlbumMyAlbums";
 import AlbumView from "./pages/album/AlbumView";
+import Photo from "./pages/Photo";
 
 import MainLayout from './components/MainLayout';
 
@@ -27,6 +28,7 @@ function App() {
         <Route path="/album/edit/:album_id" element={<AlbumEdit />} />
         <Route path="/albums/my" element={<AlbumMyAlbums />} />
         <Route path="/album/:album_id" element={<AlbumView />} />
+        <Route path="/photo/:photo_id" element={<Photo />} />
       </Route>
     </Routes>
   );
