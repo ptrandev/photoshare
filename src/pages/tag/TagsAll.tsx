@@ -32,7 +32,7 @@ const TagsAll : FC = () => {
     <Grid container>
       <Grid item xs={12}>
         <Typography variant="h4" mb={2}>
-          Tags
+          All Tags
         </Typography>
         <Box display="flex">
           {tags?.map((tag) => (
