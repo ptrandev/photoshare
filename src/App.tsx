@@ -17,6 +17,7 @@ import TagsMyTags from "pages/tag/TagsMyTags";
 import TagMyPhotos from "pages/tag/TagMyPhotos";
 import CommentsSearch from "pages/CommentsSearch";
 import PhotosSearch from "pages/PhotosSearch";
+import TagsMostPopular from "pages/tag/TagsMostPopular";
 
 import MainLayout from './components/MainLayout';
 
@@ -38,9 +39,10 @@ function App() {
         <Route path="/tags" element={<TagsAll />} />
         <Route path="/tag/:tag_id" element={<TagPhotos />} />
         <Route path="/tags/my" element={<TagsMyTags />} />
-        <Route path="tag/my/:tag_id" element={<TagMyPhotos />} />
-        <Route path="comments/search" element={<CommentsSearch/>} />
-        <Route path="photos/search" element={<PhotosSearch/>} />
+        <Route path="/tag/my/:tag_id" element={<TagMyPhotos />} />
+        <Route path="/comments/search" element={<CommentsSearch/>} />
+        <Route path="/photos/search" element={<PhotosSearch/>} />
+        <Route path="/tags/popular" element={<TagsMostPopular />} />
       </Route>
     </Routes>
   );

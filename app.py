@@ -754,6 +754,16 @@ def get_user_tags_photos():
 
     return jsonify({"photos": photos})
 
+# GET MOST POPULAR TAG(S)
+@app.route('/tags/popular', methods=['GET'])
+def get_popular_tags():
+    cursor = conn.cursor()
+
+    cursor.execute(f"SELECT t.tag_id, t.tag_name, COUNT(*) AS num_photos FROM Tags t JOIN Has_Tag ht ON t.tag_id=ht.tag_id GROUP BY t.tag_id HAVING num_photos = (SELECT MAX(num_photos) FROM (SELECT ht.tag_id, COUNT(ht.tag_id) as num_photos FROM photoshare.Has_Tag ht GROUP BY ht.tag_id) as tc);")
+    tags = cursor.fetchall()
+
+    return jsonify({"tags": tags})
+
 # -------------------------- #
 # - COMMENTS SEARCH ROUTER - #
 # -------------------------- #
