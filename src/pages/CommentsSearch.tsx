@@ -8,8 +8,22 @@ import {
   Stack,
   TextField,
   Button,
+  ListItem,
+  ListItemIcon,
+  Avatar,
+  ListItemText,
+  List,
 } from '@mui/material';
 import { useSnackbar } from 'notistack';
+import axios from 'utils/axios';
+
+interface Results {
+  user_id: number;
+  first_name: string;
+  last_name: string;
+  email: string;
+  matches: number;
+}
 
 const CommentsSearch : FC = () => {
   const { enqueueSnackbar } = useSnackbar();
@@ -18,7 +32,7 @@ const CommentsSearch : FC = () => {
     text: '',
   })
 
-  const [results, setResults] = useState([]);
+  const [results, setResults] = useState<Results[]>([]);
 
   const handleChange = (e : ChangeEvent<HTMLInputElement>) => {
     setFormValue({
@@ -34,8 +48,8 @@ const CommentsSearch : FC = () => {
       });
     }
 
-    enqueueSnackbar("Submitted", {
-      variant: "success",
+    axios.get(`/comments/search?text=${formValue.text}`).then((res) => {
+      setResults(res.data.comments);
     });
   }
 
@@ -75,6 +89,19 @@ const CommentsSearch : FC = () => {
           </Stack>
         </form>
       </Grid>
+      <List>
+        {results.map((result) => (
+          <ListItem key={result.user_id}>
+            <ListItemIcon>
+              <Avatar>{result.first_name[0]} {result.last_name[0]}</Avatar>
+            </ListItemIcon>
+            <ListItemText
+              primary={`${result.first_name} ${result.last_name} (${result.email})`}
+              secondary={`Matches: ${result.matches}`}
+            />
+          </ListItem>
+        ))}
+      </List>
       {results?.length === 0 && (
         <Grid item xs={12}>
           <Typography variant="body1">

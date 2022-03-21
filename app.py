@@ -609,7 +609,7 @@ def comment_img():
     text = request.json["text"]
 
     # user can't comment on their own photo
-    cursor.execute(f"SELECT * FROM Photos JOIN Albums WHERE photo_id={photo_id} AND user_id={user_id}")
+    cursor.execute(f"SELECT * FROM Photos p JOIN Albums a ON p.album_id=a.album_id WHERE p.photo_id={photo_id} AND a.user_id={user_id}")
     result = cursor.fetchone()
 
     if result:
@@ -753,6 +753,21 @@ def get_user_tags_photos():
         photo['tags'] = tags
 
     return jsonify({"photos": photos})
+
+# -------------------------- #
+# - COMMENTS SEARCH ROUTER - #
+# -------------------------- #
+
+@app.route('/comments/search', methods=['GET'])
+def search_comments():
+    text = request.args.get("text")
+
+    cursor = conn.cursor()
+
+    cursor.execute(f"SELECT u.user_id, u.first_name, u.last_name, u.email, COUNT(c.text) as matches FROM Comments c JOIN Users u ON c.user_id=u.user_id WHERE BINARY c.text='{text}' GROUP BY u.user_id ORDER BY matches DESC;")
+    comments = cursor.fetchall()
+
+    return jsonify({"comments": comments})
 
 # -------------------------- #
 # - RECOMMENDATIONS ROUTER - #
