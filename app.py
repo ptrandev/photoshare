@@ -56,6 +56,7 @@ cursor = conn.cursor()
 cursor.execute("SELECT email from Users")
 users = cursor.fetchall()
 
+
 # ----------------- #
 # - LOGIN MANAGER - #
 # ----------------- #
@@ -467,13 +468,6 @@ def get_album_img(album_id):
     for img in result:
         obj = img
 
-        # Get Likes
-        # cursor.execute(
-        #     f"SELECT first_name, last_name FROM Likes l JOIN Users u ON l.user_id=u.user_id where l.photo_id={img['photo_id']};")
-        # likes = [f"{a[0]} {a[1]}" for a in cursor.fetchall()]
-        # obj["likes"] = likes
-        # obj["num_likes"] = len(likes)
-
         # Get Comments
         cursor.execute(
             f"SELECT first_name, last_name, text FROM Comments c JOIN Users u ON c.user_id=u.user_id where c.photo_id={img['photo_id']} ORDER BY date DESC;")
@@ -676,6 +670,7 @@ def get_friend_feed():
 
     return jsonify(albums)
 
+
 # --------------- #
 # - TAGS ROUTER - # 
 # --------------- #
@@ -874,13 +869,14 @@ def get_friend_recommendations():
         "email": r['email'],
         } for r in cursor.fetchall()
     ]
-    
+
     return jsonify(friend_recs)
 
-# GET ALBUM RECOMMENDATIONS
-@app.route('/recommendations/albums', methods=['GET'])
+# GET PHOTO RECOMMENDATIONS
+@app.route('/recommendations/photos', methods=['GET'])
 @jwt_required()
-def get_album_recommendations():
+def get_photo_recommendations():
+    # Get id from email
     email = get_jwt_identity()
     cursor = conn.cursor()
     cursor.execute(f"SELECT user_id FROM Users WHERE email = '{email}'")
@@ -888,17 +884,52 @@ def get_album_recommendations():
     # Get user id
     user_id = cursor.fetchone()['user_id']
     
-    cursor.execute(
-        f"SELECT T.tag_id, L.user_id, T.photo_id, P.data FROM Likes L JOIN Has_Tag T ON L.photo_id = T.photo_id JOIN Photos P T.photo_id = P.photo_id WHERE L.user_id = {user_id} NOT EXISTS (SELECT * FROM Has_Tag T2 WHERE T2.photo_id = T.photo_id AND T2.user_id = {user_id})"
-    ) 
+    # Get top 5 tags to recommend
+    cursor.execute(f"""
+    SELECT Tags.tag_id
+    FROM Tags JOIN Has_Tag JOIN Photos JOIN Albums
+    ON Tags.tag_id = Has_Tag.tag_id AND Has_Tag.photo_id = Photos.photo_id AND Photos.album_id = Albums.album_id
+    WHERE Albums.user_id={user_id}
+    GROUP BY tag_id
+    ORDER BY COUNT(*) DESC
+    LIMIT 5
+    """)
+    top_tags = [a["tag_id"] for a in cursor.fetchall()]
 
-    photo_recs = [
-        {"photo_id": r['photo_id'], 
-        "data": r['first_name']
-        } for r in cursor.fetchall()
-    ]
+    # user has uploaded no photos, return empty list
+    if len(top_tags) == 0:
+        return jsonify({"photos": []})
+
+    cursor.execute(f"""
+    SELECT NewPhotos.data, NewPhotos.photo_id, NewPhotos.caption, NewPhotos.first_name, NewPhotos.last_name, NewPhotos.email
+    FROM (
+        SELECT p.data, p.photo_id, p.caption, u.first_name, u.last_name, u.email, u.user_id
+        FROM Photos p JOIN Albums a
+        ON p.album_id = a.album_id
+        JOIN Users u
+        ON a.user_id = u.user_id
+        JOIN Has_Tag ht
+        ON p.photo_id = ht.photo_id
+        GROUP BY p.photo_id
+        ORDER BY COUNT(*) ASC
+    ) AS NewPhotos
+    JOIN Has_Tag 
+    ON NewPhotos.photo_id = Has_Tag.photo_id
+    WHERE tag_id IN ({",".join(str(top_tag) for top_tag in top_tags)}) AND
+    NewPhotos.user_id <> {user_id}
+    GROUP BY NewPhotos.photo_id
+    ORDER BY COUNT(NewPhotos.photo_id) DESC
+    """)
     
-    return jsonify(photo_recs)
+    photos = cursor.fetchall()
+
+    for photo in photos:
+        # get tags
+        cursor.execute(f"SELECT t.tag_id, t.tag_name FROM Tags t JOIN Has_Tag ht WHERE ht.photo_id={photo['photo_id']} AND ht.tag_id=t.tag_id;")
+        tags = cursor.fetchall()
+        photo['tags'] = tags
+
+    return jsonify({"photos": photos})
 
 
 # --------------- #
