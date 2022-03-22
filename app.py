@@ -837,27 +837,34 @@ def get_photo_recommendations():
     
     # Get recommended photos
     cursor.execute(f"""
-    SELECT photo_id, COUNT(tag_id)
+    SELECT Tags.tag_id
+    FROM Tags JOIN Has_Tag JOIN Photos JOIN Albums
+    ON Tags.tag_id = Has_Tag.tag_id AND Has_Tag.photo_id = Photos.photo_id AND Photos.album_id = Albums.album_id
+    WHERE Albums.user_id={user_id}
+    GROUP BY tag_id
+    ORDER BY COUNT(*) DESC
+    LIMIT 5      
+    """)
+    top_tags = [a["tag_id"] for a in cursor.fetchall()]
+    
+    cursor.execute(f"""
+    SELECT data
     FROM (
-        SELECT photo_id
-        FROM Has_Tag
-        GROUP BY photo_id
+        SELECT Photos.data, Photos.photo_id
+        FROM Photos JOIN Has_Tag
+        ON Photos.photo_id = Has_Tag.photo_id
+        GROUP BY Photos.data, Photos.photo_id
         ORDER BY COUNT(*) ASC
-    )
-    WHERE tag_id IN (
-        SELECT tag_id
-        FROM Tags JOIN Has_Tag JOIN Photos JOIN Albums
-        ON Tags.tag_id = Has_Tag.tag_id AND Has_Tag.photo_id = Photos.photo_id AND Photos.album_id = Albums.album_id
-        WHERE Albums.user_id={user_id}
-        GROUP BY tag_id
-        ORDER BY COUNT(*) DESC
-        LIMIT 5
-    )
-    GROUP BY (photo_id)
+    ) AS NewPhotos
+    JOIN Has_Tag 
+    ON NewPhotos.photo_id = Has_Tag.photo_id
+    WHERE tag_id IN ({",".join(top_tags)})
+    GROUP BY data
     ORDER BY COUNT(*) DESC
     """)
     
     photo_recs = cursor.fetchall()
+    
     return jsonify(photo_recs)
 
 
