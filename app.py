@@ -382,7 +382,7 @@ def upload_img():
     album_id = request.form['album_id']
     file = request.files['file']
     caption = request.form['caption']
-    tags = json.loads(request.form['tags'])
+    tags = json.loads(request.form['tags'].lower())
 
     # Check if album exists
     cursor.execute(
@@ -769,7 +769,7 @@ def get_popular_tags():
 def search_tags():
     tags = request.args.get("tags")
 
-    tags = tags.split() # transform tags from space seperated string to list
+    tags = tags.lower().split() # transform tags from space seperated string to list
 
     # ensure that all tags are valid
     for tag in tags:
@@ -818,7 +818,22 @@ def get_user_leaderboard():
     cursor = conn.cursor()
 
     # get number of photos + comments left by each user
-    cursor.execute("SELECT photo_comment_score.user_id_photos as user_id,photo_comment_score.first_name_photos as first_name, photo_comment_score.last_name_photos as last_name, photo_comment_score.email_photos as email, COALESCE(num_photos, 0) + COALESCE(num_comments,0) as contribution_score FROM (SELECT DISTINCT * FROM (SELECT u.user_id as user_id_photos, u.first_name as first_name_photos, u.last_name as last_name_photos, u.email as email_photos, COUNT(a.user_id) as num_photos FROM Albums a JOIN Photos b ON a.album_id=b.album_id RIGHT JOIN Users u ON a.user_id=u.user_id GROUP BY u.user_id ORDER BY COUNT(a.user_id)) AS photo_score LEFT OUTER JOIN (SELECT u.user_id as user_id_comments, COUNT(c.user_id) as num_comments FROM Comments c RIGHT JOIN Users u ON c.user_id=u.user_id GROUP BY u.user_id ORDER BY COUNT(c.user_id)) AS comment_score ON photo_score.user_id_photos = comment_score.user_id_comments) AS photo_comment_score GROUP BY photo_comment_score.user_id_photos ORDER BY contribution_score DESC LIMIT 10;")
+    cursor.execute("""
+    SELECT photo_comment_score.user_id_photos as user_id,photo_comment_score.first_name_photos as first_name, photo_comment_score.last_name_photos as last_name, photo_comment_score.email_photos as email, COALESCE(num_photos, 0) + COALESCE(num_comments,0) as contribution_score
+    FROM (
+        SELECT DISTINCT * FROM (
+            SELECT u.user_id as user_id_photos, u.first_name as first_name_photos, u.last_name as last_name_photos, u.email as email_photos, COUNT(a.user_id) as num_photos
+                FROM Albums a JOIN Photos b ON a.album_id=b.album_id RIGHT JOIN Users u ON a.user_id=u.user_id
+                GROUP BY u.user_id ORDER BY COUNT(a.user_id)) AS photo_score
+        LEFT OUTER JOIN (
+            SELECT u.user_id as user_id_comments, COUNT(c.user_id) as num_comments
+            FROM Comments c RIGHT JOIN Users u ON c.user_id=u.user_id
+            GROUP BY u.user_id ORDER BY COUNT(c.user_id)) AS comment_score ON photo_score.user_id_photos = comment_score.user_id_comments) 
+        AS photo_comment_score
+        GROUP BY photo_comment_score.user_id_photos
+        ORDER BY contribution_score
+        DESC LIMIT 10;
+    """)
 
     users = cursor.fetchall()
 

@@ -60,7 +60,8 @@ const PhotosSearch : FC = () => {
             }}
           >
             <TextField
-              label="Search Comment"
+              label="Search Photos by Tags"
+              placeholder="Separate tags with a space (ex: baseball football)"
               variant="outlined"
               name="text"
               fullWidth
