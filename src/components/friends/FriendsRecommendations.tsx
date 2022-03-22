@@ -26,7 +26,7 @@ interface Recommendation {
 const FriendsRecommendations : FC = () => {
   const { enqueueSnackbar } = useSnackbar();
 
-  const [recommendations, setRecommendations] = useState<Recommendation[]>();
+  const [recommendations, setRecommendations] = useState<Recommendation[]>([]);
 
   const handleAddFriend = (userId : number) => {
     axios.post(`/friends/add`, {
@@ -83,6 +83,11 @@ const FriendsRecommendations : FC = () => {
             </ListItem>
           ))}
         </List>
+        {recommendations?.length === 0 && (
+          <Typography variant="body1">
+            No friend recommendations
+          </Typography>
+        )}
       </CardContent>
     </Card>
   );

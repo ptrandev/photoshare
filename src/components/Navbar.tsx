@@ -41,6 +41,12 @@ const DrawerList = () => {
       loginRequired: false,
     },
     {
+      label: 'Create Album',
+      icon: <UploadIcon />,
+      link: '/album/create',
+      loginRequired: true,
+    },
+    {
       label: 'My Albums',
       icon: <PhotoAlbumIcon />,
       link: '/albums/my',
@@ -63,12 +69,6 @@ const DrawerList = () => {
       icon: <LeaderboardIcon/>,
       link: '/leaderboard',
       loginRequired: false,
-    },
-    {
-      label: 'Create Album',
-      icon: <UploadIcon />,
-      link: '/album/create',
-      loginRequired: true,
     },
     {
       label: 'All Tags',

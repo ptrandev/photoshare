@@ -31,9 +31,7 @@ load_dotenv()
 # CORS SETTINGS
 mysql = MySQL(cursorclass=DictCursor)
 app = Flask(__name__)
-
 cors = CORS(app, supports_credentials = True)
-
 app.secret_key = 'DeltaEchoEchoZuluNovemberUniformTangoSierra'
 
 # SQL CONFIGURATION
@@ -196,8 +194,8 @@ def register():
     cursor = conn.cursor()
     test = isEmailUnique(email)
     if test:
-        print(cursor.execute(
-            f"INSERT INTO Users (email, password, first_name, last_name, dob, hometown, gender) VALUES ('{email}', '{password}', '{first_name}', '{last_name}', '{dob}', '{hometown}', '{gender}')"))
+        cursor.execute(
+            f"INSERT INTO Users (email, password, first_name, last_name, dob, hometown, gender) VALUES ('{email}', '{password}', '{first_name}', '{last_name}', '{dob}', '{hometown}', '{gender}')")
         conn.commit()
 
         return {"success": True, "message": "Registration succeeded. You can login now."}
@@ -385,7 +383,7 @@ def upload_img():
     album_id = request.form['album_id']
     file = request.files['file']
     caption = request.form['caption']
-    tags = json.loads(request.form['tags'])
+    tags = json.loads(request.form['tags'].lower())
 
     # Check if album exists
     cursor.execute(
@@ -407,6 +405,7 @@ def upload_img():
     # Save image to database
     cursor.execute(
         f"INSERT INTO Photos (album_id, caption, data) VALUES ('{album_id}', '{caption}', '{save_path}');")
+    conn.commit()
     
     # get photo id
     cursor.execute(
@@ -591,15 +590,22 @@ def like_img():
 
 # COMMENT ON IMAGE
 @app.route('/imgs/comment', methods=['POST'])
-@jwt_required()
+@jwt_required(optional=True)
 def comment_img():
     # Get id from email
     email = get_jwt_identity()
     cursor = conn.cursor()
     cursor.execute(f"SELECT user_id FROM Users WHERE email = '{email}'")
-    
+
+    user = cursor.fetchone()
+
+    # if there is no logged in user, use the guest user account
+    if not user:
+        user_id = 1
+    else:
+        user_id = user['user_id']
+
     # Get user id, photo id, comment text
-    user_id = cursor.fetchone()['user_id']
     photo_id = request.json["photo_id"]
     text = request.json["text"]
 
@@ -760,6 +766,34 @@ def get_popular_tags():
 
     return jsonify({"tags": tags})
 
+# SEARCH PHOTOS BY TAG
+@app.route('/tags/search', methods=['GET'])
+def search_tags():
+    tags = request.args.get("tags")
+
+    tags = tags.lower().split() # transform tags from space seperated string to list
+
+    # ensure that all tags are valid
+    for tag in tags:
+        cursor = conn.cursor()
+        cursor.execute(f"SELECT * FROM Tags WHERE tag_name = '{tag}'")
+        # tag doesn't exist, so there are no photos that match the search
+        if cursor.fetchone() is None:
+            return jsonify({"photos": []})
+
+    tag_query = ', '.join(f"'{tag}'" for tag in tags) # create query for each tag
+
+    # get all photos that contain all specified tags
+    cursor.execute(f"SELECT p.data, p.photo_id, p.caption, p.album_id, u.first_name, u.last_name FROM Photos p JOIN Has_Tag ht JOIN tags t JOIN Albums a JOIN Users u ON u.user_id=a.user_id AND p.album_id=a.album_id AND ht.photo_id=p.photo_id AND ht.tag_id=t.tag_id WHERE t.tag_name IN ({tag_query}) GROUP BY p.photo_id HAVING COUNT(tag_name)={len(tags)};")
+    photos = cursor.fetchall()
+
+    for photo in photos:
+        # get tags
+        cursor.execute(f"SELECT t.tag_id, t.tag_name FROM Tags t JOIN Has_Tag ht WHERE ht.photo_id={photo['photo_id']} AND ht.tag_id=t.tag_id;")
+        tags = cursor.fetchall()
+        photo['tags'] = tags
+
+    return jsonify({"photos": photos})
 
 # -------------------------- #
 # - COMMENTS SEARCH ROUTER - #
@@ -786,7 +820,22 @@ def get_user_leaderboard():
     cursor = conn.cursor()
 
     # get number of photos + comments left by each user
-    cursor.execute("SELECT photo_comment_score.user_id_photos as user_id,photo_comment_score.first_name_photos as first_name, photo_comment_score.last_name_photos as last_name, photo_comment_score.email_photos as email, COALESCE(num_photos, 0) + COALESCE(num_comments,0) as contribution_score FROM (SELECT DISTINCT * FROM (SELECT u.user_id as user_id_photos, u.first_name as first_name_photos, u.last_name as last_name_photos, u.email as email_photos, COUNT(a.user_id) as num_photos FROM Albums a JOIN Photos b ON a.album_id=b.album_id RIGHT JOIN Users u ON a.user_id=u.user_id GROUP BY u.user_id ORDER BY COUNT(a.user_id)) AS photo_score LEFT OUTER JOIN (SELECT u.user_id as user_id_comments, COUNT(c.user_id) as num_comments FROM Comments c RIGHT JOIN Users u ON c.user_id=u.user_id GROUP BY u.user_id ORDER BY COUNT(c.user_id)) AS comment_score ON photo_score.user_id_photos = comment_score.user_id_comments) AS photo_comment_score GROUP BY photo_comment_score.user_id_photos ORDER BY contribution_score DESC LIMIT 10;")
+    cursor.execute("""
+    SELECT photo_comment_score.user_id_photos as user_id,photo_comment_score.first_name_photos as first_name, photo_comment_score.last_name_photos as last_name, photo_comment_score.email_photos as email, COALESCE(num_photos, 0) + COALESCE(num_comments,0) as contribution_score
+    FROM (
+        SELECT DISTINCT * FROM (
+            SELECT u.user_id as user_id_photos, u.first_name as first_name_photos, u.last_name as last_name_photos, u.email as email_photos, COUNT(a.user_id) as num_photos
+                FROM Albums a JOIN Photos b ON a.album_id=b.album_id RIGHT JOIN Users u ON a.user_id=u.user_id
+                GROUP BY u.user_id ORDER BY COUNT(a.user_id)) AS photo_score
+        LEFT OUTER JOIN (
+            SELECT u.user_id as user_id_comments, COUNT(c.user_id) as num_comments
+            FROM Comments c RIGHT JOIN Users u ON c.user_id=u.user_id
+            GROUP BY u.user_id ORDER BY COUNT(c.user_id)) AS comment_score ON photo_score.user_id_photos = comment_score.user_id_comments) 
+        AS photo_comment_score
+        GROUP BY photo_comment_score.user_id_photos
+        ORDER BY contribution_score
+        DESC LIMIT 10;
+    """)
 
     users = cursor.fetchall()
 
