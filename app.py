@@ -892,29 +892,44 @@ def get_photo_recommendations():
     WHERE Albums.user_id={user_id}
     GROUP BY tag_id
     ORDER BY COUNT(*) DESC
-    LIMIT 5      
+    LIMIT 5
     """)
     top_tags = [a["tag_id"] for a in cursor.fetchall()]
-    
+
+    # user has uploaded no photos, return empty list
+    if len(top_tags) == 0:
+        return jsonify({"photos": []})
+
     cursor.execute(f"""
-    SELECT data
+    SELECT NewPhotos.data, NewPhotos.photo_id, NewPhotos.caption, NewPhotos.first_name, NewPhotos.last_name, NewPhotos.email
     FROM (
-        SELECT Photos.data, Photos.photo_id
-        FROM Photos JOIN Has_Tag
-        ON Photos.photo_id = Has_Tag.photo_id
-        GROUP BY Photos.data, Photos.photo_id
+        SELECT p.data, p.photo_id, p.caption, u.first_name, u.last_name, u.email, u.user_id
+        FROM Photos p JOIN Albums a
+        ON p.album_id = a.album_id
+        JOIN Users u
+        ON a.user_id = u.user_id
+        JOIN Has_Tag ht
+        ON p.photo_id = ht.photo_id
+        GROUP BY p.photo_id
         ORDER BY COUNT(*) ASC
     ) AS NewPhotos
     JOIN Has_Tag 
     ON NewPhotos.photo_id = Has_Tag.photo_id
-    WHERE tag_id IN ({",".join(top_tags)})
-    GROUP BY data
-    ORDER BY COUNT(*) DESC
+    WHERE tag_id IN ({",".join(str(top_tag) for top_tag in top_tags)}) AND
+    NewPhotos.user_id <> {user_id}
+    GROUP BY NewPhotos.photo_id
+    ORDER BY COUNT(NewPhotos.photo_id) DESC
     """)
     
-    photo_recs = cursor.fetchall()
-    
-    return jsonify(photo_recs)
+    photos = cursor.fetchall()
+
+    for photo in photos:
+        # get tags
+        cursor.execute(f"SELECT t.tag_id, t.tag_name FROM Tags t JOIN Has_Tag ht WHERE ht.photo_id={photo['photo_id']} AND ht.tag_id=t.tag_id;")
+        tags = cursor.fetchall()
+        photo['tags'] = tags
+
+    return jsonify({"photos": photos})
 
 
 # --------------- #

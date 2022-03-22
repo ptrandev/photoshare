@@ -14,7 +14,7 @@ const YouMayAlsoLike : FC = () => {
   const fetchRecommendations = () => {
     axios.get('/recommendations/photos').then(res => {
       setPhotos(res.data.photos);
-      console.log(res);
+      console.log(res.data.photos);
     })
   }
 
@@ -44,7 +44,7 @@ const YouMayAlsoLike : FC = () => {
       {photos?.length === 0 && (
         <Grid item xs={12}>
           <Typography variant="body1">
-            There are no recommendations. Like some photos and try again.
+            There are no recommendations. Upload some photos and try again.
           </Typography>
         </Grid>
       )}
