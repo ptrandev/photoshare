@@ -1,9 +1,7 @@
 import type { FC, ChangeEvent } from 'react';
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 import {
   Grid,
-  Card,
-  CardContent,
   Typography,
   Stack,
   TextField,
