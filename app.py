@@ -596,15 +596,22 @@ def like_img():
 
 # COMMENT ON IMAGE
 @app.route('/imgs/comment', methods=['POST'])
-@jwt_required()
+@jwt_required(optional=True)
 def comment_img():
     # Get id from email
     email = get_jwt_identity()
     cursor = conn.cursor()
     cursor.execute(f"SELECT user_id FROM Users WHERE email = '{email}'")
-    
+
+    user = cursor.fetchone()
+
+    # if there is no logged in user, use the guest user account
+    if not user:
+        user_id = 1
+    else:
+        user_id = user['user_id']
+
     # Get user id, photo id, comment text
-    user_id = cursor.fetchone()['user_id']
     photo_id = request.json["photo_id"]
     text = request.json["text"]
 
