@@ -58,6 +58,7 @@ cursor = conn.cursor()
 cursor.execute("SELECT email from Users")
 users = cursor.fetchall()
 
+
 # ----------------- #
 # - LOGIN MANAGER - #
 # ----------------- #
@@ -468,13 +469,6 @@ def get_album_img(album_id):
     for img in result:
         obj = img
 
-        # Get Likes
-        # cursor.execute(
-        #     f"SELECT first_name, last_name FROM Likes l JOIN Users u ON l.user_id=u.user_id where l.photo_id={img['photo_id']};")
-        # likes = [f"{a[0]} {a[1]}" for a in cursor.fetchall()]
-        # obj["likes"] = likes
-        # obj["num_likes"] = len(likes)
-
         # Get Comments
         cursor.execute(
             f"SELECT first_name, last_name, text FROM Comments c JOIN Users u ON c.user_id=u.user_id where c.photo_id={img['photo_id']} ORDER BY date DESC;")
@@ -670,6 +664,7 @@ def get_friend_feed():
 
     return jsonify(albums)
 
+
 # --------------- #
 # - TAGS ROUTER - # 
 # --------------- #
@@ -765,6 +760,7 @@ def get_popular_tags():
 
     return jsonify({"tags": tags})
 
+
 # -------------------------- #
 # - COMMENTS SEARCH ROUTER - #
 # -------------------------- #
@@ -780,6 +776,7 @@ def search_comments():
 
     return jsonify({"comments": comments})
 
+
 # ------------------------ #
 # - USER ACTIVITY ROUTER - #
 # ------------------------ #
@@ -794,6 +791,7 @@ def get_user_leaderboard():
     users = cursor.fetchall()
 
     return jsonify({"users": users})
+
 
 # -------------------------- #
 # - RECOMMENDATIONS ROUTER - #
@@ -822,15 +820,45 @@ def get_friend_recommendations():
         "email": r['email'],
         } for r in cursor.fetchall()
     ]
-    
+
     return jsonify(friend_recs)
 
-# GET ALBUM RECOMMENDATIONS
-@app.route('/recommendations/albums', methods=['GET'])
+# GET PHOTO RECOMMENDATIONS
+@app.route('/recommendations/photos', methods=['GET'])
 @jwt_required()
-def get_album_recommendations():
-    """Get album recommendations based on users liked photos"""
-    pass
+def get_photo_recommendations():
+    # Get id from email
+    email = get_jwt_identity()
+    cursor = conn.cursor()
+    cursor.execute(f"SELECT user_id FROM Users WHERE email = '{email}'")
+
+    # Get user id
+    user_id = cursor.fetchone()['user_id']
+    
+    # Get recommended photos
+    cursor.execute(f"""
+    SELECT photo_id, COUNT(tag_id)
+    FROM (
+        SELECT photo_id
+        FROM Has_Tag
+        GROUP BY photo_id
+        ORDER BY COUNT(*) ASC
+    )
+    WHERE tag_id IN (
+        SELECT tag_id
+        FROM Tags JOIN Has_Tag JOIN Photos JOIN Albums
+        ON Tags.tag_id = Has_Tag.tag_id AND Has_Tag.photo_id = Photos.photo_id AND Photos.album_id = Albums.album_id
+        WHERE Albums.user_id={user_id}
+        GROUP BY tag_id
+        ORDER BY COUNT(*) DESC
+        LIMIT 5
+    )
+    GROUP BY (photo_id)
+    ORDER BY COUNT(*) DESC
+    """)
+    
+    photo_recs = cursor.fetchall()
+    return jsonify(photo_recs)
 
 
 # --------------- #
