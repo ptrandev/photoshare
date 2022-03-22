@@ -18,6 +18,7 @@ import TagMyPhotos from "pages/tag/TagMyPhotos";
 import CommentsSearch from "pages/CommentsSearch";
 import PhotosSearch from "pages/PhotosSearch";
 import TagsMostPopular from "pages/tag/TagsMostPopular";
+import YouMayAlsoLike from "pages/YouMayAlsoLike";
 
 import MainLayout from './components/MainLayout';
 
@@ -43,6 +44,7 @@ function App() {
         <Route path="/comments/search" element={<CommentsSearch/>} />
         <Route path="/photos/search" element={<PhotosSearch/>} />
         <Route path="/tags/popular" element={<TagsMostPopular />} />
+        <Route path="/recommended" element={<YouMayAlsoLike/>} />
       </Route>
     </Routes>
   );
