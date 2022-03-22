@@ -31,9 +31,7 @@ load_dotenv()
 # CORS SETTINGS
 mysql = MySQL(cursorclass=DictCursor)
 app = Flask(__name__)
-
 cors = CORS(app, supports_credentials = True)
-
 app.secret_key = 'DeltaEchoEchoZuluNovemberUniformTangoSierra'
 
 # SQL CONFIGURATION
@@ -195,8 +193,8 @@ def register():
     cursor = conn.cursor()
     test = isEmailUnique(email)
     if test:
-        print(cursor.execute(
-            f"INSERT INTO Users (email, password, first_name, last_name, dob, hometown, gender) VALUES ('{email}', '{password}', '{first_name}', '{last_name}', '{dob}', '{hometown}', '{gender}')"))
+        cursor.execute(
+            f"INSERT INTO Users (email, password, first_name, last_name, dob, hometown, gender) VALUES ('{email}', '{password}', '{first_name}', '{last_name}', '{dob}', '{hometown}', '{gender}')")
         conn.commit()
 
         return {"success": True, "message": "Registration succeeded. You can login now."}
@@ -406,6 +404,7 @@ def upload_img():
     # Save image to database
     cursor.execute(
         f"INSERT INTO Photos (album_id, caption, data) VALUES ('{album_id}', '{caption}', '{save_path}');")
+    conn.commit()
     
     # get photo id
     cursor.execute(
@@ -765,6 +764,17 @@ def get_popular_tags():
 
     return jsonify({"tags": tags})
 
+# SEARCH PHOTOS BY TAG
+@app.route('/tag/search', methods=['GET'])
+def search_tags():
+    tag_name = request.args.get("tag_name")
+    cursor = conn.cursor()
+    
+    cursor.execute(f"SELECT * FROM Tags WHERE tag_name LIKE '%{tag_name}%';")
+    tags = cursor.fetchall()
+    
+    return jsonify(tags)
+
 # -------------------------- #
 # - COMMENTS SEARCH ROUTER - #
 # -------------------------- #
@@ -780,6 +790,7 @@ def search_comments():
 
     return jsonify({"comments": comments})
 
+
 # ------------------------ #
 # - USER ACTIVITY ROUTER - #
 # ------------------------ #
@@ -794,6 +805,7 @@ def get_user_leaderboard():
     users = cursor.fetchall()
 
     return jsonify({"users": users})
+
 
 # -------------------------- #
 # - RECOMMENDATIONS ROUTER - #
@@ -829,8 +841,24 @@ def get_friend_recommendations():
 @app.route('/recommendations/albums', methods=['GET'])
 @jwt_required()
 def get_album_recommendations():
-    """Get album recommendations based on users liked photos"""
-    pass
+    email = get_jwt_identity()
+    cursor = conn.cursor()
+    cursor.execute(f"SELECT user_id FROM Users WHERE email = '{email}'")
+
+    # Get user id
+    user_id = cursor.fetchone()['user_id']
+    
+    cursor.execute(
+        f"SELECT T.tag_id, L.user_id, T.photo_id, P.data FROM Likes L JOIN Has_Tag T ON L.photo_id = T.photo_id JOIN Photos P T.photo_id = P.photo_id WHERE L.user_id = {user_id} NOT EXISTS (SELECT * FROM Has_Tag T2 WHERE T2.photo_id = T.photo_id AND T2.user_id = {user_id})"
+    ) 
+
+    photo_recs = [
+        {"photo_id": r['photo_id'], 
+        "data": r['first_name']
+        } for r in cursor.fetchall()
+    ]
+    
+    return jsonify(photo_recs)
 
 
 # --------------- #

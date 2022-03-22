@@ -72,3 +72,5 @@ CREATE TABLE Likes (
 
 INSERT INTO Users (email, password, first_name, last_name, dob, hometown, gender) VALUES ('dcmag@bu.edu', 'dcmag', 'Dominic', 'Maglione', '2001-12-18', 'Waterford', 'Male');
 INSERT INTO Users (email, password, first_name, last_name, dob, hometown, gender) VALUES ('ptrandev@bu.edu', 'ptrandev', 'Phillip', 'Tran', '2002-01-29', 'Lowell', 'Male');
+INSERT INTO Users (email, password, first_name, last_name, dob, hometown, gender) VALUES ('dmelchor@bu.edu', 'dmelchor', 'Dani', 'Melchor', '2002-07-06', 'Madrid', 'Male');
+INSERT INTO Users (email, password, first_name, last_name, dob, hometown, gender) VALUES ('vineetr@bu.edu', 'vineetr', 'Vineet', 'Raju', '2002-05-17', 'Boston', 'Male');
