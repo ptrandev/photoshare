@@ -26,6 +26,7 @@ import RecommendIcon from '@mui/icons-material/Recommend';
 import HomeIcon from '@mui/icons-material/Home';
 import UploadIcon from '@mui/icons-material/Upload';
 import PhotoAlbumIcon from '@mui/icons-material/PhotoAlbum';
+import LocalOfferIcon from '@mui/icons-material/LocalOffer';
 
 const drawerWidth = 240;
 
@@ -47,18 +48,12 @@ const DrawerList = () => {
     },
     {
       label: 'My Tags',
-      icon: <StyleIcon />,
+      icon: <LocalOfferIcon />,
       link: '/tags/my',
       loginRequired: true,
     },
     {
-      label: 'Create Album',
-      icon: <UploadIcon />,
-      link: '/album/create',
-      loginRequired: true,
-    },
-    {
-      label: 'Friends List',
+      label: 'Friends',
       icon: <GroupIcon/>,
       link: '/friends',
       loginRequired: true,
@@ -70,15 +65,33 @@ const DrawerList = () => {
       loginRequired: false,
     },
     {
-      label: 'Tags',
+      label: 'Create Album',
+      icon: <UploadIcon />,
+      link: '/album/create',
+      loginRequired: true,
+    },
+    {
+      label: 'All Tags',
       icon: <StyleIcon/>,
       link: '/tags',
       loginRequired: false,
     },
     {
-      label: 'Photo Search',
+      label: 'Most Popular Tags',
+      icon: <StyleIcon />,
+      link: '/tags/popular',
+      loginRequired: false,
+    },
+    {
+      label: 'Photos Search',
       icon: <SearchIcon/>,
-      link: '/search',
+      link: '/photos/search',
+      loginRequired: false,
+    },
+    {
+      label: 'Comments Search',
+      icon: <SearchIcon/>,
+      link: 'comments/search',
       loginRequired: false,
     },
     {

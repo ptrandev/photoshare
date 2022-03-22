@@ -32,7 +32,7 @@ const TagsAll : FC = () => {
     <Grid container>
       <Grid item xs={12}>
         <Typography variant="h4" mb={2}>
-          Tags
+          All Tags
         </Typography>
         <Box display="flex">
           {tags?.map((tag) => (
@@ -47,6 +47,9 @@ const TagsAll : FC = () => {
               </Button>
             </Link>
           ))}
+          {tags?.length === 0 && (
+            <Typography variant="body1">No tags found.</Typography>
+          )}
         </Box>
       </Grid>
     </Grid>

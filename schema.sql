@@ -36,7 +36,7 @@ CREATE TABLE Photos (
   caption VARCHAR(255),
   data VARCHAR(255) NOT NULL,
   CONSTRAINT photo_pk PRIMARY KEY (photo_id),
-  CONSTRAINT album_id FOREIGN KEY (album_id) REFERENCES Albums(album_id)
+  CONSTRAINT album_id FOREIGN KEY (album_id) REFERENCES Albums(album_id) ON DELETE CASCADE
 );
 
 CREATE TABLE Comments (
@@ -72,3 +72,5 @@ CREATE TABLE Likes (
 
 INSERT INTO Users (email, password, first_name, last_name, dob, hometown, gender) VALUES ('dcmag@bu.edu', 'dcmag', 'Dominic', 'Maglione', '2001-12-18', 'Waterford', 'Male');
 INSERT INTO Users (email, password, first_name, last_name, dob, hometown, gender) VALUES ('ptrandev@bu.edu', 'ptrandev', 'Phillip', 'Tran', '2002-01-29', 'Lowell', 'Male');
+INSERT INTO Users (email, password, first_name, last_name, dob, hometown, gender) VALUES ('dmelchor@bu.edu', 'dmelchor', 'Dani', 'Melchor', '2002-07-06', 'Madrid', 'Male');
+INSERT INTO Users (email, password, first_name, last_name, dob, hometown, gender) VALUES ('vineetr@bu.edu', 'vineetr', 'Vineet', 'Raju', '2002-05-17', 'Boston', 'Male');
