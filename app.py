@@ -884,7 +884,7 @@ def get_photo_recommendations():
     # Get user id
     user_id = cursor.fetchone()['user_id']
     
-    # Get recommended photos
+    # Get top 5 tags to recommend
     cursor.execute(f"""
     SELECT Tags.tag_id
     FROM Tags JOIN Has_Tag JOIN Photos JOIN Albums
