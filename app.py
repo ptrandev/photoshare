@@ -193,8 +193,8 @@ def register():
     cursor = conn.cursor()
     test = isEmailUnique(email)
     if test:
-        print(cursor.execute(
-            f"INSERT INTO Users (email, password, first_name, last_name, dob, hometown, gender) VALUES ('{email}', '{password}', '{first_name}', '{last_name}', '{dob}', '{hometown}', '{gender}')"))
+        cursor.execute(
+            f"INSERT INTO Users (email, password, first_name, last_name, dob, hometown, gender) VALUES ('{email}', '{password}', '{first_name}', '{last_name}', '{dob}', '{hometown}', '{gender}')")
         conn.commit()
 
         return {"success": True, "message": "Registration succeeded. You can login now."}
@@ -236,6 +236,7 @@ def add_friend():
         f"INSERT INTO Friends (friend_a, friend_b) VALUES ('{user_id}', '{friend_id}')")
     cursor.execute(
         f"INSERT INTO Friends (friend_a, friend_b) VALUES ('{friend_id}', '{user_id}')")
+    conn.commit()
 
     return jsonify({"success": True, "message": "Friend added."})
 
@@ -403,6 +404,7 @@ def upload_img():
     # Save image to database
     cursor.execute(
         f"INSERT INTO Photos (album_id, caption, data) VALUES ('{album_id}', '{caption}', '{save_path}');")
+    conn.commit()
     
     # get photo id
     cursor.execute(
