@@ -765,15 +765,33 @@ def get_popular_tags():
     return jsonify({"tags": tags})
 
 # SEARCH PHOTOS BY TAG
-@app.route('/tag/search', methods=['GET'])
+@app.route('/tags/search', methods=['GET'])
 def search_tags():
-    tag_name = request.args.get("tag_name")
-    cursor = conn.cursor()
-    
-    cursor.execute(f"SELECT * FROM Tags WHERE tag_name LIKE '%{tag_name}%';")
-    tags = cursor.fetchall()
-    
-    return jsonify(tags)
+    tags = request.args.get("tags")
+
+    tags = tags.split() # transform tags from space seperated string to list
+
+    # ensure that all tags are valid
+    for tag in tags:
+        cursor = conn.cursor()
+        cursor.execute(f"SELECT * FROM Tags WHERE tag_name = '{tag}'")
+        # tag doesn't exist, so there are no photos that match the search
+        if cursor.fetchone() is None:
+            return jsonify({"photos": []})
+
+    tag_query = ', '.join(f"'{tag}'" for tag in tags) # create query for each tag
+
+    # get all photos that contain all specified tags
+    cursor.execute(f"SELECT p.data, p.photo_id, p.caption, p.album_id, u.first_name, u.last_name FROM Photos p JOIN Has_Tag ht JOIN tags t JOIN Albums a JOIN Users u ON u.user_id=a.user_id AND p.album_id=a.album_id AND ht.photo_id=p.photo_id AND ht.tag_id=t.tag_id WHERE t.tag_name IN ({tag_query}) GROUP BY p.photo_id HAVING COUNT(tag_name)={len(tags)};")
+    photos = cursor.fetchall()
+
+    for photo in photos:
+        # get tags
+        cursor.execute(f"SELECT t.tag_id, t.tag_name FROM Tags t JOIN Has_Tag ht WHERE ht.photo_id={photo['photo_id']} AND ht.tag_id=t.tag_id;")
+        tags = cursor.fetchall()
+        photo['tags'] = tags
+
+    return jsonify({"photos": photos})
 
 # -------------------------- #
 # - COMMENTS SEARCH ROUTER - #
