@@ -826,6 +826,7 @@ def get_user_leaderboard():
         SELECT DISTINCT * FROM (
             SELECT u.user_id as user_id_photos, u.first_name as first_name_photos, u.last_name as last_name_photos, u.email as email_photos, COUNT(a.user_id) as num_photos
                 FROM Albums a JOIN Photos b ON a.album_id=b.album_id RIGHT JOIN Users u ON a.user_id=u.user_id
+                WHERE u.user_id <> 1
                 GROUP BY u.user_id ORDER BY COUNT(a.user_id)) AS photo_score
         LEFT OUTER JOIN (
             SELECT u.user_id as user_id_comments, COUNT(c.user_id) as num_comments

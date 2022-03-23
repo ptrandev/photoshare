@@ -82,7 +82,7 @@ const Login = () => {
                 handleSubmit();
               }}
             >
-              Register
+              Login
             </Button>
           </Stack>
         </form>
